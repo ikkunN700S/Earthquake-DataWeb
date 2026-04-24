@@ -1,5 +1,31 @@
 body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: sans-serif; background: #f4f4f4; }
-header { background: #2c3e50; color: white; padding: 10px 20px; }
+/* ヘッダー全体をFlexbox化 */
+header {
+    background-color: #2c3e50; /* 既存の背景色 */
+    color: white;              /* 既存の文字色 */
+    padding: 15px 20px;
+    
+    /* ここからが横並び・折り返しの設定 */
+    display: flex;
+    flex-wrap: wrap;           /* スペースが足りない時は自動で下へ折り返す */
+    align-items: center;       /* 縦方向の中央で高さを揃える */
+    gap: 2vh;                 /* H1とPの間の隙間（折り返した時は上下の隙間になる） */
+}
+
+/* タイトルの余白をリセット */
+header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    white-space: nowrap; /* タイトル自体は途中で改行させない */
+}
+
+/* 注意書き（小文字化）の設定 */
+header .attention {
+    margin: 0;
+    font-size: 0.8rem;   /* 文字を小さくする */
+    color: #bdc3c7;      /* 少し薄いグレーにしてH1を目立たせる */
+    line-height: 1.4;    /* 複数行になった時の行間を見やすく */
+}
 
 /* 検索バーのスタイル */
 #search-bar {
