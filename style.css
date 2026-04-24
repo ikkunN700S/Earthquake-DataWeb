@@ -230,7 +230,6 @@ footer {
 footer #site-version {
     font-size: 10px;
     color: #aaa;
-    margin-top: 4px;
 }
 
 @media (max-width: 768px) {
