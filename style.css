@@ -24,6 +24,84 @@ button:hover { background: #2980b9; }
 main { display: flex; flex: 1; overflow: hidden; }
 #map { flex: 2; z-index: 1; }
 #info-panel { flex: 1; padding: 20px; background: #fff; overflow-y: auto; box-shadow: -2px 0 5px rgba(0,0,0,0.1); }
-.detail-item { margin-bottom: 12px; padding: 10px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #3498db; }
-.detail-item span { display: block; font-size: 0.8em; color: #7f8c8d; }
-.value { font-size: 1.1em; font-weight: bold; }
+
+/* 1つの地震をまとめるカードの枠組み */
+.eq-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    overflow: hidden; /* 角丸をはみ出させない */
+}
+
+/* カードの上部（ヘッダー）: 震度と地名を目立たせる */
+.eq-card-header {
+    background: #399ec2; /* 地震情報らしい赤系の色 */
+    color: white;
+    padding: 10px 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.eq-intensity {
+    font-size: 1.2rem;
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.eq-location {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+/* カードの下部（ボディ）: 詳細な数値を並べる */
+.eq-card-body {
+    padding: 12px 15px;
+    background: #f5f5f5;
+}
+
+.eq-info {
+    font-size: 1rem;
+    color: #2c3e50;
+    display: flex;
+    justify-content: space-between; /* 項目名を左、数値を右に配置 */
+    padding: 6px 0;
+    border-bottom: 1px dashed #ecf0f1;
+}
+
+/* 最後の線は消す */
+.eq-info:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.eq-info span {
+    color: #7f8c8d;
+    font-weight: bold;
+}
+
+/* 複数表示用のタイトル */
+.panel-title {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    margin-top: 0;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+/* 震度別の背景色定義 */
+.bg-shindo-1 { background-color: #8bafd6 !important; color: #333 !important; }
+.bg-shindo-2 { background-color: #72d278 !important; color: #333 !important; }
+.bg-shindo-3 { background-color: #fae600 !important; color: #333 !important; }
+.bg-shindo-4 { background-color: #ffb100 !important; color: #333 !important; }
+.bg-shindo-5-low { background-color: #ff3300 !important; }
+.bg-shindo-5-high { background-color: #a50021 !important; }
+.bg-shindo-6-low { background-color: #b40671 !important; }
+.bg-shindo-6-high { background-color: #8a0557 !important; }
+.bg-shindo-7 { background-color: #600239 !important; }
