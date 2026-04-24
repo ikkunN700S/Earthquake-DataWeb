@@ -13,22 +13,21 @@ function initMap() {
 
     // クラスタリンググループの初期化
     markerClusterGroup = L.markerClusterGroup({
-        chunkedLoading: true, // 大量データ読み込み時のブラウザフリーズを防ぐ設定
+        chunkedLoading: true, // 大量データ読み込み時のフリーズを防ぐ
 
-        // ① まとまる範囲（半径ピクセル数）。デフォルトは 80 です。
-        // この数値を 30 や 40 に減らすと、かなり密集していないとまとまらなくなります。
+        // まとまる範囲（半径ピクセル数）デフォルトは 80
+        // この数値減らすと、まとまらなくなる
         maxClusterRadius: 40, 
 
-        // ② 指定したズームレベル（地図の拡大率）以上になったら、
-        // どれだけ密集していても強制的にクラスターを解除して個別のピンを表示します。
-        // （目安: 10〜12くらいに設定すると操作感が良くなります）
+        // 指定したズームレベル（地図の拡大率）以上で強制的にクラスターを解除して個別のピンを表示
+        // 目安: 10〜12くらい
         disableClusteringAtZoom: 10
     });
     map.addLayer(markerClusterGroup);
 
     // 何もない地図上をクリックされた場合
     map.on('click', (e) => {
-        // もしクリックされたターゲットが地図本体（タイルなど）であればリセット
+        // もしクリックされたターゲットが地図であればリセット
         if (e.originalEvent.target.id === 'map' || e.originalEvent.target.classList.contains('leaflet-container')) {
             resetPanel();
         }
@@ -44,7 +43,7 @@ function resetPanel() {
 
 // 震度文字列の数値化
 function getIntensityLevel(intensityStr) {
-    const scale = { '1': 1, '2': 2, '3': 3, '4': 4, '5弱': 4.5, '5強': 5.5, '6弱': 6.5, '6強': 7.5, '7': 8 };
+    const scale = { '1': 1, '2': 2, '3': 3, '4': 4, '5-': 4.5, '5+': 5.0, '6-': 5.5, '6+': 6.0, '7': 7 };
     return scale[intensityStr] || parseFloat(intensityStr) || 0;
 }
 
@@ -83,13 +82,13 @@ async function loadData() {
                     time, mag: parseFloat(mag) || 0, location, 
                     intensityLevel: getIntensityLevel(intensity), rawIntensity: intensity,
                     csvLat: lat, csvLon: lon,
-                    // 検索用にDateオブジェクト（タイムスタンプ）を持っておく
+                    // 検索用にDateオブジェクト（タイムスタンプ）を持つ
                     timeMs: new Date(time).getTime()
                 };
             })
             .sort((a, b) => b.timeMs - a.timeMs);
 
-        // 初期表示は「検索ボタンを押したのと同じ挙動」にする
+        // 初期表示は「検索ボタンを押した場合と同じ挙動」
         executeSearch();
 
         // 読み込み直後は直近3件表示
@@ -161,7 +160,7 @@ function updateDisplay(dataList, message) {
         }
     });
 
-    // クラスタリンググループに一括追加（この方法が一番高速です）
+    // クラスタリンググループに一括追加
     markerClusterGroup.addLayers(markersToAdd);
 
     // 最大表示件数の警告
@@ -188,7 +187,7 @@ function getIntensityClass(rawIntensity) {
     return classMap[rawIntensity] || '';
 }
 
-// 詳細表示（変更なし）
+// 詳細表示
 function showDetail(data) {
     const detailsDiv = document.getElementById('details');
     const placeholder = document.querySelector('.placeholder');
@@ -199,11 +198,16 @@ function showDetail(data) {
     const cardsHtml = data.map(data => {
         // ここで震度に基づいたクラスを取得
         const intensityClass = getIntensityClass(data.rawIntensity);
-        
+
+        // 画面表示用に表記を変換
+        const displayIntensity = data.rawIntensity
+            .replace('5-', '5弱').replace('5+', '5強')
+            .replace('6-', '6弱').replace('6+', '6強');
+            
         return `
             <div class="eq-card">
                 <div class="eq-card-header ${intensityClass}">
-                    <span class="eq-intensity">震度 ${data.rawIntensity}</span>
+                    <span class="eq-intensity">震度 ${displayIntensity}</span>
                     <span class="eq-location">${data.location}</span>
                 </div>
                 
