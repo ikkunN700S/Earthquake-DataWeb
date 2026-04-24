@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <title>地震データベースWeb</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,21 +13,9 @@
     
     <section id="search-bar">
         <div class="input-group">
-            <label>期間:</label>
-            <input type="date" id="search-date-start"> ～ 
-            <input type="date" id="search-date-end">
+            <label>地域名:</label>
+            <input type="text" id="search-location" placeholder="例: 奄美、茨城...">
         </div>
-
-        <div class="input-group">
-            <label>地域:</label>
-            <input type="text" id="search-location" placeholder="例: 奄美" style="width: 80px;">
-        </div>
-
-        <div class="input-group">
-            <label>最小M:</label>
-            <input type="number" id="search-mag" step="0.1" value="0" min="0" style="width: 60px;">
-        </div>
-
         <div class="input-group">
             <label>最小震度:</label>
             <select id="search-intensity">
@@ -46,8 +31,8 @@
                 <option value="8">震度 7</option>
             </select>
         </div>
-        <button id="btn-search">検索</button>
-        <span id="result-count">読み込み中...</span>
+        <button id="btn-search">検索・更新</button>
+        <span id="result-count">最新5件を表示中</span>
     </section>
 
     <main>
@@ -60,7 +45,6 @@
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

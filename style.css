@@ -4,10 +4,11 @@ header { background: #2c3e50; color: white; padding: 10px 20px; }
 /* 検索バーのスタイル */
 #search-bar {
     background: white;
-    padding: 15px 20px;
+    padding: 10px 20px;
     display: flex;
+    flex-wrap: wrap; /* 画面が狭い時に折り返す */
     align-items: center;
-    gap: 20px;
+    gap: 15px;
     border-bottom: 1px solid #ddd;
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
