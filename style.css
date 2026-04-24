@@ -1,0 +1,28 @@
+body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: sans-serif; background: #f4f4f4; }
+header { background: #2c3e50; color: white; padding: 10px 20px; }
+
+/* 検索バーのスタイル */
+#search-bar {
+    background: white;
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border-bottom: 1px solid #ddd;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+.input-group { display: flex; align-items: center; gap: 8px; }
+input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+button { 
+    background: #3498db; color: white; border: none; padding: 8px 16px; 
+    border-radius: 4px; cursor: pointer; transition: 0.2s;
+}
+button:hover { background: #2980b9; }
+#result-count { font-size: 0.9em; color: #666; }
+
+main { display: flex; flex: 1; overflow: hidden; }
+#map { flex: 2; z-index: 1; }
+#info-panel { flex: 1; padding: 20px; background: #fff; overflow-y: auto; box-shadow: -2px 0 5px rgba(0,0,0,0.1); }
+.detail-item { margin-bottom: 12px; padding: 10px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #3498db; }
+.detail-item span { display: block; font-size: 0.8em; color: #7f8c8d; }
+.value { font-size: 1.1em; font-weight: bold; }

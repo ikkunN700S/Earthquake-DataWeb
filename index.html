@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>地震情報検索マップ</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>地震情報アーカイブ</h1>
+    </header>
+    
+    <section id="search-bar">
+        <div class="input-group">
+            <label>地域名:</label>
+            <input type="text" id="search-location" placeholder="例: 奄美、茨城...">
+        </div>
+        <div class="input-group">
+            <label>最小震度:</label>
+            <select id="search-intensity">
+                <option value="0">すべて</option>
+                <option value="1">1以上</option>
+                <option value="3">3以上</option>
+                <option value="5">5弱以上</option>
+            </select>
+        </div>
+        <button id="btn-search">検索・更新</button>
+        <span id="result-count">最新5件を表示中</span>
+    </section>
+
+    <main>
+        <div id="map"></div>
+        <div id="info-panel">
+            <h2>詳細情報</h2>
+            <p class="placeholder">マーカーを選択してください</p>
+            <div id="details"></div>
+        </div>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
