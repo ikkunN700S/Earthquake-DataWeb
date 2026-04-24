@@ -25,6 +25,21 @@ function initMap() {
         disableClusteringAtZoom: 10
     });
     map.addLayer(markerClusterGroup);
+
+    // 何もない地図上をクリックされた場合
+    map.on('click', (e) => {
+        // もしクリックされたターゲットが地図本体（タイルなど）であればリセット
+        if (e.originalEvent.target.id === 'map' || e.originalEvent.target.classList.contains('leaflet-container')) {
+            resetPanel();
+        }
+    });
+}
+
+function resetPanel() {
+    const detailsDiv = document.getElementById('details');
+    const placeholder = document.querySelector('.placeholder');
+    detailsDiv.innerHTML = ''; // 内容をクリア
+    if (placeholder) placeholder.style.display = 'block'; // 案内文を表示
 }
 
 // 震度文字列の数値化
@@ -76,6 +91,11 @@ async function loadData() {
 
         // 初期表示は「検索ボタンを押したのと同じ挙動」にする
         executeSearch();
+
+        // 読み込み直後は直近3件表示
+        if (allEarthquakes.length > 0) {
+            showDetail(allEarthquakes.slice(0, 3));
+        }
 
     } catch (e) {
         console.error("読み込みエラー:", e);
@@ -133,7 +153,10 @@ function updateDisplay(dataList, message) {
 
         if (finalLat && finalLon) {
             const marker = L.marker([finalLat, finalLon]);
-            marker.on('click', () => showDetail(data));
+            marker.on('click', (e) => {
+                L.DomEvent.stopPropagation(e); 
+                showDetail([data]); // クリックした1件のみ表示
+            });
             markersToAdd.push(marker);
         }
     });
@@ -149,17 +172,56 @@ function updateDisplay(dataList, message) {
     document.getElementById('result-count').textContent = countText;
 }
 
+// 震度に応じたCSSクラスを返すヘルパー関数
+function getIntensityClass(rawIntensity) {
+    const classMap = {
+        '1': 'bg-shindo-1',
+        '2': 'bg-shindo-2',
+        '3': 'bg-shindo-3',
+        '4': 'bg-shindo-4',
+        '5-': 'bg-shindo-5-low',
+        '5+': 'bg-shindo-5-high',
+        '6-': 'bg-shindo-6-low',
+        '6+': 'bg-shindo-6-high',
+        '7': 'bg-shindo-7'
+    };
+    return classMap[rawIntensity] || '';
+}
+
 // 詳細表示（変更なし）
 function showDetail(data) {
     const detailsDiv = document.getElementById('details');
     const placeholder = document.querySelector('.placeholder');
     if (placeholder) placeholder.style.display = 'none';
-    detailsDiv.innerHTML = `
-        <div class="detail-item"><span>発生時刻</span><div class="value">${new Date(data.time).toLocaleString('ja-JP')}</div></div>
-        <div class="detail-item"><span>震源地</span><div class="value">${data.location}</div></div>
-        <div class="detail-item"><span>マグニチュード</span><div class="value">M ${data.mag}</div></div>
-        <div class="detail-item"><span>最大震度</span><div class="value">${data.rawIntensity}</div></div>
-    `;
+
+    const titleHtml = data.length > 1 ? '<h3 style="font-size:0.9rem; color:#666;">直近の地震情報</h3>' : '';
+
+    const cardsHtml = data.map(data => {
+        // ここで震度に基づいたクラスを取得
+        const intensityClass = getIntensityClass(data.rawIntensity);
+        
+        return `
+            <div class="eq-card">
+                <div class="eq-card-header ${intensityClass}">
+                    <span class="eq-intensity">震度 ${data.rawIntensity}</span>
+                    <span class="eq-location">${data.location}</span>
+                </div>
+                
+                <div class="eq-card-body">
+                    <div class="eq-info">
+                        <span>発生時刻</span>
+                        <strong>${new Date(data.time).toLocaleString('ja-JP')}</strong>
+                    </div>
+                    <div class="eq-info">
+                        <span>マグニチュード</span>
+                        <strong>M ${data.mag}</strong>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    detailsDiv.innerHTML = titleHtml + cardsHtml;
 }
 
 loadData();

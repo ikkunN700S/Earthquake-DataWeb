@@ -12,6 +12,7 @@
 <body>
     <header>
         <h1>地震データベースWeb</h1>
+        <p class="attention">2023年03月03日以降の地震データを閲覧できます。<br>地震規模が更新された場合、同一日時データが複数表示されます。<br>2026年04月25日以前の震央は代表地点が表示されます。</p>
     </header>
     
     <section id="search-bar">
@@ -62,5 +63,10 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="script.js"></script>
+
+    <footer>
+        <p id="site-version"></p>
+        <script src="version.js"></script>
+    </footer>
 </body>
 </html>
