@@ -1,30 +1,45 @@
-body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: sans-serif; background: #f4f4f4; }
+body {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    font-family: sans-serif;
+    background: #f4f4f4;
+}
+
 /* ヘッダー全体をFlexbox化 */
 header {
-    background-color: #2c3e50; /* 既存の背景色 */
-    color: white;              /* 既存の文字色 */
+    background-color: #2c3e50;
+    color: white;
     padding: 15px 20px;
-    
-    /* ここからが横並び・折り返しの設定 */
+
+    /* 横並び・折り返しの設定 */
     display: flex;
-    flex-wrap: wrap;           /* スペースが足りない時は自動で下へ折り返す */
-    align-items: center;       /* 縦方向の中央で高さを揃える */
-    gap: 2vh;                 /* H1とPの間の隙間（折り返した時は上下の隙間になる） */
+    flex-wrap: wrap;
+    /* スペースが足りない時は自動で下へ折り返す */
+    align-items: center;
+    /* 縦方向の中央で高さを揃える */
+    gap: 2vh;
+    /* H1とPの間の隙間（折り返した時は上下の隙間） */
 }
 
 /* タイトルの余白をリセット */
 header h1 {
     margin: 0;
     font-size: 1.5rem;
-    white-space: nowrap; /* タイトル自体は途中で改行させない */
+    white-space: nowrap;
+    /* タイトル自体は途中で改行させない */
 }
 
 /* 注意書き（小文字化）の設定 */
 header .attention {
     margin: 0;
-    font-size: 0.8rem;   /* 文字を小さくする */
-    color: #bdc3c7;      /* 少し薄いグレーにしてH1を目立たせる */
-    line-height: 1.4;    /* 複数行になった時の行間を見やすく */
+    font-size: 0.8rem;
+    /* 文字を小さくする */
+    color: #bdc3c7;
+    /* 少し薄いグレーにしてH1を目立たせる */
+    line-height: 1.4;
+    /* 複数行になった時の行間を見やすく */
 }
 
 /* 検索バーのスタイル */
@@ -32,38 +47,79 @@ header .attention {
     background: white;
     padding: 10px 20px;
     display: flex;
-    flex-wrap: wrap; /* 画面が狭い時に折り返す */
+    flex-wrap: wrap;
+    /* 画面が狭い時に折り返す */
     align-items: center;
     gap: 15px;
     border-bottom: 1px solid #ddd;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
-.input-group { display: flex; align-items: center; gap: 8px; }
-input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-button { 
-    background: #3498db; color: white; border: none; padding: 8px 16px; 
-    border-radius: 4px; cursor: pointer; transition: 0.2s;
+
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
-button:hover { background: #2980b9; }
-#result-count { font-size: 0.9em; color: #666; }
 
-main { display: flex; flex: 1; overflow: hidden; }
-#map { flex: 2; z-index: 1; }
-#info-panel { flex: 1; padding: 20px; background: #fff; overflow-y: auto; box-shadow: -2px 0 5px rgba(0,0,0,0.1); }
+input,
+select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
 
-/* 1つの地震をまとめるカードの枠組み */
+button {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+button:hover {
+    background: #2980b9;
+}
+
+#result-count {
+    font-size: 0.9em;
+    color: #666;
+}
+
+main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+#map {
+    flex: 2;
+    z-index: 1;
+}
+
+#info-panel {
+    flex: 1;
+    padding: 20px;
+    background: #fff;
+    overflow-y: auto;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+/* 1つの地震の枠組み */
 .eq-card {
     background: #fff;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     margin-bottom: 15px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    overflow: hidden; /* 角丸をはみ出させない */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    /* 角丸をはみ出させない */
 }
 
-/* カードの上部（ヘッダー）: 震度と地名を目立たせる */
+/* カードの上部 */
 .eq-card-header {
-    background: #399ec2; /* 地震情報らしい赤系の色 */
+    background: #399ec2;
     color: white;
     padding: 10px 15px;
     display: flex;
@@ -85,7 +141,7 @@ main { display: flex; flex: 1; overflow: hidden; }
     font-weight: bold;
 }
 
-/* カードの下部（ボディ）: 詳細な数値を並べる */
+/* カードの下部（ボディ）: 詳細を並べる */
 .eq-card-body {
     padding: 12px 15px;
     background: #f5f5f5;
@@ -95,7 +151,8 @@ main { display: flex; flex: 1; overflow: hidden; }
     font-size: 1rem;
     color: #2c3e50;
     display: flex;
-    justify-content: space-between; /* 項目名を左、数値を右に配置 */
+    justify-content: space-between;
+    /* 項目名を左、数値を右に配置 */
     padding: 6px 0;
     border-bottom: 1px dashed #ecf0f1;
 }
@@ -122,26 +179,56 @@ main { display: flex; flex: 1; overflow: hidden; }
 }
 
 /* 震度別の背景色定義 */
-.bg-shindo-1 { background-color: #8bafd6 !important; color: #333 !important; }
-.bg-shindo-2 { background-color: #72d278 !important; color: #333 !important; }
-.bg-shindo-3 { background-color: #fae600 !important; color: #333 !important; }
-.bg-shindo-4 { background-color: #ffb100 !important; color: #333 !important; }
-.bg-shindo-5-low { background-color: #ff3300 !important; }
-.bg-shindo-5-high { background-color: #a50021 !important; }
-.bg-shindo-6-low { background-color: #b40671 !important; }
-.bg-shindo-6-high { background-color: #8a0557 !important; }
-.bg-shindo-7 { background-color: #600239 !important; }
+.bg-shindo-1 {
+    background-color: #8bafd6 !important;
+    color: #333 !important;
+}
+
+.bg-shindo-2 {
+    background-color: #72d278 !important;
+    color: #333 !important;
+}
+
+.bg-shindo-3 {
+    background-color: #fae600 !important;
+    color: #333 !important;
+}
+
+.bg-shindo-4 {
+    background-color: #ffb100 !important;
+    color: #333 !important;
+}
+
+.bg-shindo-5-low {
+    background-color: #ff3300 !important;
+}
+
+.bg-shindo-5-high {
+    background-color: #a50021 !important;
+}
+
+.bg-shindo-6-low {
+    background-color: #b40671 !important;
+}
+
+.bg-shindo-6-high {
+    background-color: #8a0557 !important;
+}
+
+.bg-shindo-7 {
+    background-color: #600239 !important;
+}
 
 footer {
     background-color: #2c3e50;
     text-align: center;
-    padding: 10px;
-    font-size: 14px;
+    padding: 0 10px;
+    font-size: 11px;
     color: #777;
 }
 
 footer #site-version {
-    font-size: 12px;
+    font-size: 10px;
     color: #aaa;
     margin-top: 4px;
 }
