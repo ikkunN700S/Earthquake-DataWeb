@@ -25,6 +25,21 @@ function initMap() {
         disableClusteringAtZoom: 10
     });
     map.addLayer(markerClusterGroup);
+
+    // 何もない地図上をクリックされた場合
+    map.on('click', (e) => {
+        // もしクリックされたターゲットが地図本体（タイルなど）であればリセット
+        if (e.originalEvent.target.id === 'map' || e.originalEvent.target.classList.contains('leaflet-container')) {
+            resetPanel();
+        }
+    });
+}
+
+function resetPanel() {
+    const detailsDiv = document.getElementById('details');
+    const placeholder = document.querySelector('.placeholder');
+    detailsDiv.innerHTML = ''; // 内容をクリア
+    if (placeholder) placeholder.style.display = 'block'; // 案内文を表示
 }
 
 // 震度文字列の数値化
@@ -76,6 +91,11 @@ async function loadData() {
 
         // 初期表示は「検索ボタンを押したのと同じ挙動」にする
         executeSearch();
+
+        // 読み込み直後は直近3件表示
+        if (allEarthquakes.length > 0) {
+            renderDetails(allEarthquakes.slice(0, 3));
+        }
 
     } catch (e) {
         console.error("読み込みエラー:", e);
@@ -133,7 +153,10 @@ function updateDisplay(dataList, message) {
 
         if (finalLat && finalLon) {
             const marker = L.marker([finalLat, finalLon]);
-            marker.on('click', () => showDetail(data));
+            marker.on('click', (e) => {
+                L.DomEvent.stopPropagation(e); 
+                showDetail([data]); // クリックした1件のみ表示
+            });
             markersToAdd.push(marker);
         }
     });
@@ -154,12 +177,15 @@ function showDetail(data) {
     const detailsDiv = document.getElementById('details');
     const placeholder = document.querySelector('.placeholder');
     if (placeholder) placeholder.style.display = 'none';
-    detailsDiv.innerHTML = `
+
+    const title = dataList.length > 1 ? '<h3 style="font-size:0.9rem; color:#666;">直近の地震情報</h3>' : '';
+
+    detailsDiv.innerHTML = title + dataList.map(data =>`
         <div class="detail-item"><span>発生時刻</span><div class="value">${new Date(data.time).toLocaleString('ja-JP')}</div></div>
         <div class="detail-item"><span>震源地</span><div class="value">${data.location}</div></div>
         <div class="detail-item"><span>マグニチュード</span><div class="value">M ${data.mag}</div></div>
         <div class="detail-item"><span>最大震度</span><div class="value">${data.rawIntensity}</div></div>
-    `;
+    `).join('');;
 }
 
 loadData();
