@@ -79,7 +79,7 @@ button {
 }
 
 button:hover {
-    background: #2980b9;
+    background: #399ec2;
 }
 
 #result-count {
@@ -231,4 +231,12 @@ footer #site-version {
     font-size: 10px;
     color: #aaa;
     margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+    html, body {
+        height: 100dvh; /* 表示領域に高さを一致させる */
+        margin: 0;
+        overflow: hidden; /* スクロール禁止 */
+    }
 }
