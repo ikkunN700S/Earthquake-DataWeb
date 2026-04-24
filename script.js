@@ -210,7 +210,13 @@ function showDetail(data) {
                 <div class="eq-card-body">
                     <div class="eq-info">
                         <span>発生時刻</span>
-                        <strong>${new Date(data.time).toLocaleString('ja-JP')}</strong>
+                        <strong>${new Date(data.time).toLocaleString('ja-JP', { 
+                            year: 'numeric', 
+                            month: 'numeric', 
+                            day: 'numeric', 
+                            hour: 'numeric', 
+                            minute: 'numeric' 
+                        })}</strong>
                     </div>
                     <div class="eq-info">
                         <span>マグニチュード</span>
