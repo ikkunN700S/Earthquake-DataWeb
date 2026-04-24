@@ -3,13 +3,24 @@ const JSON_URL = 'centers.json';
 
 let map;
 let centerCoordinates = {};
-let allEarthquakes = []; // 全データを保持する配列
-let currentMarkers = []; // 表示中のマーカーを管理
+let allEarthquakes = []; 
+let currentMarkers = []; 
 
 // 地図初期化
 function initMap() {
     map = L.map('map').setView([36.2048, 138.2529], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+}
+
+// 震度文字列を比較用の数値に変換
+function getIntensityLevel(intensityStr) {
+    const scale = {
+        '1': 1, '2': 2, '3': 3, '4': 4,
+        '5弱': 4.5, '5強': 5.5,
+        '6弱': 6.5, '6強': 7.5,
+        '7': 8
+    };
+    return scale[intensityStr] || parseFloat(intensityStr) || 0;
 }
 
 // データの読み込み
@@ -20,14 +31,22 @@ async function loadData() {
         centerCoordinates = await jsonRes.json();
         const csvText = await csvRes.text();
         
-        // CSVをパースして配列に格納
+        // CSVをパース（6列分取得するように変更）
         allEarthquakes = csvText.split('\n')
             .filter(line => line.trim() !== '')
             .map(line => {
-                const [time, mag, location, intensity] = line.split(',').map(s => s.trim());
-                return { time, mag, location, intensity: parseInt(intensity), rawIntensity: intensity };
+                // 列の分割（5列目：緯度、6列目：経度）
+                const [time, mag, location, intensity, lat, lon] = line.split(',').map(s => s.trim());
+                return { 
+                    time, 
+                    mag, 
+                    location, 
+                    intensityLevel: getIntensityLevel(intensity), 
+                    rawIntensity: intensity,
+                    csvLat: lat, // CSVに記録されている緯度
+                    csvLon: lon  // CSVに記録されている経度
+                };
             })
-            // 日付の降順（新しい順）にソート
             .sort((a, b) => new Date(b.time) - new Date(a.time));
 
         // 初期表示：最新5件
@@ -38,16 +57,31 @@ async function loadData() {
     }
 }
 
-// 表示の更新処理
+// 表示の更新処理（ハイブリッド座標決定ロジック）
 function updateDisplay(dataList, message) {
-    // 既存のマーカーを削除
     currentMarkers.forEach(m => map.removeLayer(m));
     currentMarkers = [];
 
     dataList.forEach(data => {
-        const coords = centerCoordinates[data.location];
-        if (coords) {
-            const marker = L.marker([coords.lat, coords.lon]).addTo(map);
+        let finalLat, finalLon;
+
+        // 1. まずCSV側に有効な数値があるか確認
+        if (data.csvLat && data.csvLon && !isNaN(data.csvLat) && !isNaN(data.csvLon)) {
+            finalLat = parseFloat(data.csvLat);
+            finalLon = parseFloat(data.csvLon);
+        } 
+        // 2. なければ centers.json から取得
+        else {
+            const fallback = centerCoordinates[data.location];
+            if (fallback) {
+                finalLat = fallback.lat;
+                finalLon = fallback.lon;
+            }
+        }
+
+        // 座標が確定できればマーカーを設置
+        if (finalLat && finalLon) {
+            const marker = L.marker([finalLat, finalLon]).addTo(map);
             marker.on('click', () => showDetail(data));
             currentMarkers.push(marker);
         }
@@ -59,7 +93,9 @@ function updateDisplay(dataList, message) {
 // 詳細表示
 function showDetail(data) {
     const detailsDiv = document.getElementById('details');
-    document.querySelector('.placeholder').style.display = 'none';
+    const placeholder = document.querySelector('.placeholder');
+    if (placeholder) placeholder.style.display = 'none';
+    
     detailsDiv.innerHTML = `
         <div class="detail-item"><span>発生時刻</span><div class="value">${new Date(data.time).toLocaleString('ja-JP')}</div></div>
         <div class="detail-item"><span>震源地</span><div class="value">${data.location}</div></div>
@@ -71,11 +107,11 @@ function showDetail(data) {
 // 検索ボタンのイベント
 document.getElementById('btn-search').addEventListener('click', () => {
     const locQuery = document.getElementById('search-location').value;
-    const minIntensity = parseInt(document.getElementById('search-intensity').value);
+    const minIntensityLevel = parseFloat(document.getElementById('search-intensity').value);
 
     const filtered = allEarthquakes.filter(eq => {
         const matchLoc = eq.location.includes(locQuery);
-        const matchInt = eq.intensity >= minIntensity;
+        const matchInt = eq.intensityLevel >= minIntensityLevel;
         return matchLoc && matchInt;
     });
 
