@@ -207,7 +207,7 @@ function showDetail(data) {
         return `
             <div class="eq-card">
                 <div class="eq-card-header ${intensityClass}">
-                    <span class="eq-intensity">震度 ${data.rawIntensity}</span>
+                    <span class="eq-intensity">震度 ${displayIntensity}</span>
                     <span class="eq-location">${data.location}</span>
                 </div>
                 
