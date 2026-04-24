@@ -1,80 +1,28 @@
-/* 全体のリセットと基本設定 */
-body {
-    margin: 0;
-    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    background-color: #f8f9fa;
-}
+body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: sans-serif; background: #f4f4f4; }
+header { background: #2c3e50; color: white; padding: 10px 20px; }
 
-header {
-    background-color: #2c3e50;
-    color: white;
-    padding: 15px 20px;
-}
-
-header h1 {
-    margin: 0;
-    font-size: 1.5rem;
-}
-
-/* メインコンテンツを横並びに */
-main {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-}
-
-/* 地図エリア（画面の2/3を占める） */
-#map {
-    flex: 2;
-    height: 100%;
-    z-index: 1; /* Leafletの仕様上の調整 */
-}
-
-/* 情報パネル（画面の1/3を占める） */
-#info-panel {
-    flex: 1;
-    min-width: 300px;
-    padding: 20px;
+/* 検索バーのスタイル */
+#search-bar {
     background: white;
-    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-    overflow-y: auto;
-    z-index: 2;
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border-bottom: 1px solid #ddd;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
+.input-group { display: flex; align-items: center; gap: 8px; }
+input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+button { 
+    background: #3498db; color: white; border: none; padding: 8px 16px; 
+    border-radius: 4px; cursor: pointer; transition: 0.2s;
+}
+button:hover { background: #2980b9; }
+#result-count { font-size: 0.9em; color: #666; }
 
-#info-panel h2 {
-    margin-top: 0;
-    border-bottom: 2px solid #3498db;
-    padding-bottom: 10px;
-    color: #2c3e50;
-}
-
-.placeholder {
-    color: #7f8c8d;
-    font-size: 0.9rem;
-}
-
-/* クリック後に表示される詳細アイテムのデザイン */
-.detail-item {
-    margin-bottom: 15px;
-    padding: 12px;
-    background: #ecf0f1;
-    border-radius: 8px;
-    border-left: 5px solid #e74c3c;
-}
-
-.detail-item span {
-    font-size: 0.85rem;
-    font-weight: bold;
-    color: #7f8c8d;
-    display: block;
-    margin-bottom: 4px;
-}
-
-.detail-item .value {
-    font-size: 1.1rem;
-    color: #2c3e50;
-    font-weight: bold;
-}
+main { display: flex; flex: 1; overflow: hidden; }
+#map { flex: 2; z-index: 1; }
+#info-panel { flex: 1; padding: 20px; background: #fff; overflow-y: auto; box-shadow: -2px 0 5px rgba(0,0,0,0.1); }
+.detail-item { margin-bottom: 12px; padding: 10px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #3498db; }
+.detail-item span { display: block; font-size: 0.8em; color: #7f8c8d; }
+.value { font-size: 1.1em; font-weight: bold; }

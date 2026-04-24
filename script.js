@@ -1,68 +1,85 @@
 const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSn6ZKPAr4mlAX68W1UVmp8wchoAn2qz2yUhCuIop_oI015bBHQPRL9iqZvUB6fAfQbKwWQ5X0QVKYZ/pub?gid=1745802546&single=true&output=csv';
-const JSON_URL = 'centers.json'; // 同一ディレクトリに配置
+const JSON_URL = 'centers.json';
 
 let map;
-let centerCoordinates = {}; // JSONデータを格納する変数
+let centerCoordinates = {};
+let allEarthquakes = []; // 全データを保持する配列
+let currentMarkers = []; // 表示中のマーカーを管理
 
-// 地図の初期化
+// 地図初期化
 function initMap() {
     map = L.map('map').setView([36.2048, 138.2529], 5);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap'
-    }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 }
 
-// メイン処理
-async function loadApp() {
+// データの読み込み
+async function loadData() {
     initMap();
-
     try {
-        // 1. まず地名対応JSONを読み込む
-        const jsonRes = await fetch(JSON_URL);
+        const [jsonRes, csvRes] = await Promise.all([fetch(JSON_URL), fetch(CSV_URL)]);
         centerCoordinates = await jsonRes.json();
-
-        // 2. 次にスプレッドシートのCSVを読み込む
-        const csvRes = await fetch(CSV_URL);
         const csvText = await csvRes.text();
         
-        processData(csvText);
-    } catch (error) {
-        console.error('データの読み込み失敗:', error);
+        // CSVをパースして配列に格納
+        allEarthquakes = csvText.split('\n')
+            .filter(line => line.trim() !== '')
+            .map(line => {
+                const [time, mag, location, intensity] = line.split(',').map(s => s.trim());
+                return { time, mag, location, intensity: parseInt(intensity), rawIntensity: intensity };
+            })
+            // 日付の降順（新しい順）にソート
+            .sort((a, b) => new Date(b.time) - new Date(a.time));
+
+        // 初期表示：最新5件
+        updateDisplay(allEarthquakes.slice(0, 5), "最新5件を表示中");
+
+    } catch (e) {
+        console.error("読み込みエラー:", e);
     }
 }
 
-function processData(csvText) {
-    const lines = csvText.split('\n').filter(line => line.trim() !== '');
+// 表示の更新処理
+function updateDisplay(dataList, message) {
+    // 既存のマーカーを削除
+    currentMarkers.forEach(m => map.removeLayer(m));
+    currentMarkers = [];
 
-    lines.forEach(line => {
-        const [time, mag, location, intensity] = line.split(',').map(s => s.trim());
-        
-        // JSONから座標を検索
-        const coords = centerCoordinates[location];
-
+    dataList.forEach(data => {
+        const coords = centerCoordinates[data.location];
         if (coords) {
-            addMarker(coords.lat, coords.lon, { time, mag, location, intensity });
-        } else {
-            console.warn(`未登録の地名です: ${location}`);
-            // 必要に応じてデフォルトの座標を表示するか、リストに記録する
+            const marker = L.marker([coords.lat, coords.lon]).addTo(map);
+            marker.on('click', () => showDetail(data));
+            currentMarkers.push(marker);
         }
     });
+
+    document.getElementById('result-count').textContent = `${message} (${dataList.length}件)`;
 }
 
-function addMarker(lat, lon, data) {
-    const marker = L.marker([lat, lon]).addTo(map);
-    marker.on('click', () => {
-        const detailsDiv = document.getElementById('details');
-        document.querySelector('.placeholder').style.display = 'none';
-        
-        const date = new Date(data.time).toLocaleString('ja-JP');
-        detailsDiv.innerHTML = `
-            <div class="detail-item"><span>発生時刻</span><div class="value">${date}</div></div>
-            <div class="detail-item"><span>震源地</span><div class="value">${data.location}</div></div>
-            <div class="detail-item"><span>マグニチュード</span><div class="value">M ${data.mag}</div></div>
-            <div class="detail-item"><span>最大震度</span><div class="value">${data.intensity}</div></div>
-        `;
+// 詳細表示
+function showDetail(data) {
+    const detailsDiv = document.getElementById('details');
+    document.querySelector('.placeholder').style.display = 'none';
+    detailsDiv.innerHTML = `
+        <div class="detail-item"><span>発生時刻</span><div class="value">${new Date(data.time).toLocaleString('ja-JP')}</div></div>
+        <div class="detail-item"><span>震源地</span><div class="value">${data.location}</div></div>
+        <div class="detail-item"><span>マグニチュード</span><div class="value">M ${data.mag}</div></div>
+        <div class="detail-item"><span>最大震度</span><div class="value">${data.rawIntensity}</div></div>
+    `;
+}
+
+// 検索ボタンのイベント
+document.getElementById('btn-search').addEventListener('click', () => {
+    const locQuery = document.getElementById('search-location').value;
+    const minIntensity = parseInt(document.getElementById('search-intensity').value);
+
+    const filtered = allEarthquakes.filter(eq => {
+        const matchLoc = eq.location.includes(locQuery);
+        const matchInt = eq.intensity >= minIntensity;
+        return matchLoc && matchInt;
     });
-}
 
-loadApp();
+    updateDisplay(filtered, "検索結果");
+});
+
+loadData();
