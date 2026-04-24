@@ -44,7 +44,7 @@ function resetPanel() {
 
 // 震度文字列の数値化
 function getIntensityLevel(intensityStr) {
-    const scale = { '1': 1, '2': 2, '3': 3, '4': 4, '5弱': 4.5, '5強': 5.5, '6弱': 6.5, '6強': 7.5, '7': 8 };
+    const scale = { '1': 1, '2': 2, '3': 3, '4': 4, '5-': 4.5, '5+': 5.0, '6-': 6.0, '6+': 6.5, '7': 7 };
     return scale[intensityStr] || parseFloat(intensityStr) || 0;
 }
 
