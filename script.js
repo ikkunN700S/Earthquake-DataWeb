@@ -12,6 +12,17 @@ function initMap() {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 }
 
+// 震度文字列を比較用の数値に変換する関数
+function getIntensityLevel(intensityStr) {
+    const scale = {
+        '1': 1, '2': 2, '3': 3, '4': 4,
+        '5弱': 4.5, '5強': 5.5,
+        '6弱': 6.5, '6強': 7.5,
+        '7': 8
+    };
+    return scale[intensityStr] || parseFloat(intensityStr) || 0;
+}
+
 // データの読み込み
 async function loadData() {
     initMap();
@@ -25,9 +36,15 @@ async function loadData() {
             .filter(line => line.trim() !== '')
             .map(line => {
                 const [time, mag, location, intensity] = line.split(',').map(s => s.trim());
-                return { time, mag, location, intensity: parseInt(intensity), rawIntensity: intensity };
+                return { 
+                    time, 
+                    mag, 
+                    location, 
+                    // parseIntではなく、作った関数で数値化
+                    intensityLevel: getIntensityLevel(intensity), 
+                    rawIntensity: intensity // 表示用（「5弱」などのまま）
+                };
             })
-            // 日付の降順（新しい順）にソート
             .sort((a, b) => new Date(b.time) - new Date(a.time));
 
         // 初期表示：最新5件
@@ -71,11 +88,13 @@ function showDetail(data) {
 // 検索ボタンのイベント
 document.getElementById('btn-search').addEventListener('click', () => {
     const locQuery = document.getElementById('search-location').value;
-    const minIntensity = parseInt(document.getElementById('search-intensity').value);
+    // 比較用に parseFloat を使用
+    const minIntensityLevel = parseFloat(document.getElementById('search-intensity').value);
 
     const filtered = allEarthquakes.filter(eq => {
         const matchLoc = eq.location.includes(locQuery);
-        const matchInt = eq.intensity >= minIntensity;
+        // 新しい intensityLevel で比較
+        const matchInt = eq.intensityLevel >= minIntensityLevel;
         return matchLoc && matchInt;
     });
 
