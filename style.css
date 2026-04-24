@@ -131,3 +131,16 @@ main { display: flex; flex: 1; overflow: hidden; }
 .bg-shindo-6-low { background-color: #b40671 !important; }
 .bg-shindo-6-high { background-color: #8a0557 !important; }
 .bg-shindo-7 { background-color: #600239 !important; }
+
+footer {
+  text-align: center;
+  padding: 10px;
+  font-size: 14px;
+  color: #777;
+}
+
+footer #site-version {
+  font-size: 12px;
+  color: #aaa;
+  margin-top: 4px;
+}
