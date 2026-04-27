@@ -57,7 +57,7 @@ function resetSelection() {
 
     // 2. パネルを「現在検索で絞り込まれている中の最新3件」に戻す
     if (currentDataList.length > 0) {
-        showDetail(currentDataList.slice(0, 3));
+        showDetail(currentDataList.slice(0, 10));
     } else {
         document.getElementById('details').innerHTML = ''; // 0件の場合は空にする
     }
