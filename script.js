@@ -6,6 +6,20 @@ let markerClusterGroup; // クラスタリング用のグループ
 let centerCoordinates = {};
 let allEarthquakes = []; 
 
+let currentSelectedMarker = null; // 現在選択されているマーカーを記憶
+let defaultMarkerIcon = null;     // 元の青いアイコンを記憶
+let currentDataList = [];         // 現在絞り込み検索されているデータのリストを記憶
+
+// 選択した時に表示する「赤いピン」の定義（外部の無料アイコンを利用）
+const selectedIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
 // 地図初期化
 function initMap() {
     map = L.map('map').setView([36.2048, 138.2529], 5);
@@ -29,16 +43,51 @@ function initMap() {
     map.on('click', (e) => {
         // もしクリックされたターゲットが地図であればリセット
         if (e.originalEvent.target.id === 'map' || e.originalEvent.target.classList.contains('leaflet-container')) {
-            resetPanel();
+            resetSelection();
         }
     });
 }
 
-function resetPanel() {
-    const detailsDiv = document.getElementById('details');
-    const placeholder = document.querySelector('.placeholder');
-    detailsDiv.innerHTML = ''; // 内容をクリア
-    if (placeholder) placeholder.style.display = 'block'; // 案内文を表示
+function resetSelection() {
+    // 1. ピンの色を元の青に戻す
+    if (currentSelectedMarker && defaultMarkerIcon) {
+        currentSelectedMarker.setIcon(defaultMarkerIcon);
+        currentSelectedMarker = null;
+    }
+
+    // 2. パネルを「現在検索で絞り込まれている中の最新3件」に戻す
+    if (currentDataList.length > 0) {
+        showDetail(currentDataList.slice(0, 10));
+    } else {
+        document.getElementById('details').innerHTML = ''; // 0件の場合は空にする
+    }
+}
+
+function executeSearch() {
+    const locQuery = document.getElementById('search-location').value;
+    const minIntensity = parseFloat(document.getElementById('search-intensity').value);
+    const minMag = parseFloat(document.getElementById('search-mag').value) || 0;
+    
+    const startDateStr = document.getElementById('search-date-start').value;
+    const endDateStr = document.getElementById('search-date-end').value;
+    const startMs = startDateStr ? new Date(startDateStr + "T00:00:00").getTime() : 0;
+    const endMs = endDateStr ? new Date(endDateStr + "T23:59:59").getTime() : Infinity;
+
+    // ★絞り込んだ結果を変数に保存（let filtered ではなく currentDataList に代入）
+    currentDataList = allEarthquakes.filter(eq => {
+        const matchLoc = eq.location.includes(locQuery);
+        const matchInt = eq.intensityLevel >= minIntensity;
+        const matchMag = eq.mag >= minMag;
+        const matchDate = eq.timeMs >= startMs && eq.timeMs <= endMs;
+        
+        return matchLoc && matchInt && matchMag && matchDate;
+    });
+
+    // ピンを再配置
+    updateDisplay(currentDataList, "検索結果");
+
+    // ★検索した直後も「最新3件」を表示させるために呼び出す
+    resetSelection();
 }
 
 // 震度文字列の数値化
@@ -91,11 +140,6 @@ async function loadData() {
         // 初期表示は「検索ボタンを押した場合と同じ挙動」
         executeSearch();
 
-        // 読み込み直後は直近3件表示
-        if (allEarthquakes.length > 0) {
-            showDetail(allEarthquakes.slice(0, 3));
-        }
-
     } catch (e) {
         console.error("読み込みエラー:", e);
     }
@@ -114,7 +158,7 @@ function executeSearch() {
     const endMs = endDateStr ? new Date(endDateStr + "T23:59:59").getTime() : Infinity;
 
     // フィルター処理
-    const filtered = allEarthquakes.filter(eq => {
+    currentDataList = allEarthquakes.filter(eq => {
         const matchLoc = eq.location.includes(locQuery);
         const matchInt = eq.intensityLevel >= minIntensity;
         const matchMag = eq.mag >= minMag;
@@ -123,7 +167,10 @@ function executeSearch() {
         return matchLoc && matchInt && matchMag && matchDate;
     });
 
-    updateDisplay(filtered, "検索結果");
+    // ピンを再配置
+    updateDisplay(currentDataList, "検索結果");
+    // 検索後の最新3件表示呼び出し
+    resetSelection();
 }
 
 // 検索ボタンのイベント
@@ -134,41 +181,51 @@ function updateDisplay(dataList, message) {
     // 既存のマーカーをすべてクリア
     markerClusterGroup.clearLayers();
     
+    currentSelectedMarker = null; // 画面更新時は選択をリセット
+
     // まとめて追加するための配列
     const markersToAdd = [];
 
     dataList.forEach(data => {
-        let finalLat, finalLon;
-        if (data.csvLat && data.csvLon && !isNaN(data.csvLat) && !isNaN(data.csvLon)) {
-            finalLat = parseFloat(data.csvLat);
-            finalLon = parseFloat(data.csvLon);
-        } else {
-            const fallback = centerCoordinates[data.location];
-            if (fallback) {
-                finalLat = fallback.lat;
-                finalLon = fallback.lon;
-            }
+        let lat, lon;
+        if (data.csvLat && data.csvLon && !isNaN(data.csvLat)) {
+            lat = data.csvLat; lon = data.csvLon;
+        } else if (centerCoordinates[data.location]) {
+            lat = centerCoordinates[data.location].lat;
+            lon = centerCoordinates[data.location].lon;
         }
 
-        if (finalLat && finalLon) {
-            const marker = L.marker([finalLat, finalLon]);
+        if (lat && lon) {
+            const marker = L.marker([lat, lon]);
+            
+            // ★クリックした時の処理を大幅アップグレード
             marker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e); 
-                showDetail([data]); // クリックした1件のみ表示
+
+                // 1. もし別のマーカーが選択されていたら、元の色(青)に戻す
+                if (currentSelectedMarker && defaultMarkerIcon) {
+                    currentSelectedMarker.setIcon(defaultMarkerIcon);
+                }
+
+                // 2. 元のアイコンデータを保存しておく（初回のみ）
+                if (!defaultMarkerIcon) {
+                    defaultMarkerIcon = marker.getIcon();
+                }
+
+                // 3. クリックしたマーカーを「赤色」に変更して記憶する
+                marker.setIcon(selectedIcon);
+                currentSelectedMarker = marker;
+
+                // 4. パネルにその地震の詳細を1件だけ表示する
+                showDetail([data]); 
             });
+            
             markersToAdd.push(marker);
         }
     });
 
-    // クラスタリンググループに一括追加
     markerClusterGroup.addLayers(markersToAdd);
-
-    // 最大表示件数の警告
-    let countText = `${message} (${dataList.length}件)`;
-    if (dataList.length > 5000) {
-        countText += ` ※件数が多いため、条件を絞ることをお勧めします`;
-    }
-    document.getElementById('result-count').textContent = countText;
+    document.getElementById('result-count').textContent = `${message} (${dataList.length}件)`;
 }
 
 // 震度に応じたCSSクラスを返すヘルパー関数
