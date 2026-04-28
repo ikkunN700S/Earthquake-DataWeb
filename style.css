@@ -113,6 +113,10 @@ button:hover {
     color: black;
 }
 
+#btn-update{
+    background-color: #7f8c8d;
+}
+
 /* 更新中のボタン（無効化状態） */
 .btn-secondary:disabled {
     opacity: 0.6;
