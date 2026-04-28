@@ -54,10 +54,16 @@ function resetSelection() {
     // 1. ピンの色を元の青に戻す
     if (currentSelectedMarker && defaultMarkerIcon) {
         currentSelectedMarker.setIcon(defaultMarkerIcon);
+        currentSelectedMarker.setZIndexOffset(0);
+        
+        // 単独表示をやめて、クラスター管理に戻す
+        map.removeLayer(currentSelectedMarker);
+        markerClusterGroup.addLayer(currentSelectedMarker);
+
         currentSelectedMarker = null;
     }
 
-    // 2. パネルを「現在検索で絞り込まれている中の最新3件」に戻す
+    // 2. パネルを「現在検索で絞り込まれている中の最新10件」に戻す
     if (currentDataList.length > 0) {
         showDetail(currentDataList.slice(0, 10));
     } else {
@@ -235,8 +241,18 @@ document.getElementById('btn-update').addEventListener('click', async (e) => {
     }
 });
 
+// ズームリセットボタン処理
+document.getElementById('btn-zoom-reset').addEventListener('click', () => {
+    // 地図の初期位置（日本全体）とズームレベル（5）に、滑らかに戻す
+    map.setView([36.2048, 138.2529], 5, { animate: true });
+});
+
 // 表示の更新処理（クラスタリング対応）
 function updateDisplay(dataList, message) {
+    // 単独表示されている赤いピンがあれば消す
+    if (currentSelectedMarker) {
+        map.removeLayer(currentSelectedMarker);
+    }
     // 既存のマーカーをすべてクリア
     markerClusterGroup.clearLayers();
     markerMap = {};
@@ -279,22 +295,46 @@ function selectMarker(timeMs, data, fromPanel = false) {
     const marker = markerMap[timeMs];
     if (!marker) return;
 
+    // ズームレベル設定
+    const targetZoom = 10;
+
     // クラスター（円）の中に隠れている場合、そこまで自動でズームして展開する
-    markerClusterGroup.zoomToShowLayer(marker, () => {
+    const performFocus = () => {
         // 既存の選択を解除
         if (currentSelectedMarker && defaultMarkerIcon) {
             currentSelectedMarker.setIcon(defaultMarkerIcon);
+            currentSelectedMarker.setZIndexOffset(0); // 重なり順をリセット
+            map.removeLayer(currentSelectedMarker); // 単独表示から外す
+            markerClusterGroup.addLayer(currentSelectedMarker); // クラスターの群れに戻す
         }
 
+        // 初回のみ：元のアイコンを記憶
         if (!defaultMarkerIcon) defaultMarkerIcon = marker.getIcon();
 
         // 選択されたマーカーを赤くし、地図を移動させる
         marker.setIcon(selectedIcon);
+        marker.setZIndexOffset(1000); // 常に他のピンやクラスターより「最前面」に表示する
+
+        // クラスターから引き抜き、地図に直接配置する
+        if (markerClusterGroup.hasLayer(marker)) {
+            markerClusterGroup.removeLayer(marker); 
+            map.addLayer(marker);
+        }
+
         currentSelectedMarker = marker;
 
         // 地図の移動（ズームレベルを少し上げて中心に）
-        map.setView(marker.getLatLng(), map.getZoom(), { animate: true });
-    });
+        map.setView(marker.getLatLng(), targetZoom, { animate: true });
+    };
+
+    // --- 分岐処理 ---
+    if (markerClusterGroup.hasLayer(marker)) {
+        // A. ピンがクラスターに隠れている場合：展開してからズーム
+        markerClusterGroup.zoomToShowLayer(marker, performFocus);
+    } else {
+        // B. すでに独立している、または単独で表示されている場合：即座にズーム
+        performFocus();
+    }
 
     // パネル表示も更新（引数のdataがあれば使用、なければ検索リストから探す）
     if (!fromPanel &&data) {
@@ -369,7 +409,7 @@ function showDetail(data) {
                     </div>
                     <div class="eq-info">
                         <span>マグニチュード</span>
-                        <strong>M ${data.mag}</strong>
+                        <strong>M ${data.mag.toFixed(1)}</strong>
                     </div>
                     <div class="eq-info" style="margin-top: 5px; justify-content: flex-end;">
                         <a href="${searchUrl}" target="_blank" rel="noopener noreferrer" class="footer-link" onclick="event.stopPropagation();" style="font-size: 0.8rem;">
@@ -382,6 +422,12 @@ function showDetail(data) {
     }).join('');
 
     detailsDiv.innerHTML = titleHtml + cardsHtml;
+
+    const infoPanel = document.getElementById('info-panel');
+    if (infoPanel) {
+        // パネルのスクロール位置を一番上に戻す
+        infoPanel.scrollTop = 0;
+    }
 }
 
 loadData();
