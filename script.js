@@ -176,6 +176,63 @@ function executeSearch() {
 // 検索ボタンのイベント
 document.getElementById('btn-search').addEventListener('click', executeSearch);
 
+// 検索条件のリセット機能
+document.getElementById('btn-reset').addEventListener('click', () => {
+    // 各入力項目を空、または初期値に戻す
+    document.getElementById('search-location').value = '';
+    document.getElementById('search-intensity').value = '0';
+    document.getElementById('search-mag').value = '0';
+    
+    // 日付を「直近30日」に戻す（以前作った関数を再利用！）
+    setDefaultDates();
+
+    // 初期状態に戻した上で、自動的に検索を実行する
+    executeSearch();
+});
+
+// データ手動更新（最新のCSVのみ再取得）機能
+document.getElementById('btn-update').addEventListener('click', async (e) => {
+    const btn = e.target;
+    const originalText = btn.textContent;
+    
+    // ボタンの連打防止と、ユーザーへの「更新中」のアピール
+    btn.textContent = '更新中...';
+    btn.disabled = true;
+
+    try {
+        // スプレッドシート（CSV）から最新データだけを再ダウンロード
+        const csvRes = await fetch(CSV_URL);
+        const csvText = await csvRes.text();
+        
+        // データを解析して allEarthquakes を上書きする
+        allEarthquakes = csvText.split('\n')
+            .filter(line => line.trim() !== '')
+            .map(line => {
+                const [time, mag, location, intensity, lat, lon] = line.split(',').map(s => s.trim());
+                return { 
+                    time, mag: parseFloat(mag) || 0, location, 
+                    intensityLevel: getIntensityLevel(intensity), rawIntensity: intensity,
+                    csvLat: lat, csvLon: lon,
+                    timeMs: new Date(time).getTime()
+                };
+            })
+            .sort((a, b) => b.timeMs - a.timeMs);
+
+        // ※JSON（代表座標）は変化しないので再取得不要です
+
+        // 最新のデータを使って、現在の検索条件のまま画面を再描画する
+        executeSearch();
+        
+    } catch (error) {
+        console.error("更新エラー:", error);
+        alert("データの更新に失敗しました。通信状況を確認してください。");
+    } finally {
+        // 処理が終わったらボタンを元の状態に戻す
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+});
+
 // 表示の更新処理（クラスタリング対応）
 function updateDisplay(dataList, message) {
     // 既存のマーカーをすべてクリア
