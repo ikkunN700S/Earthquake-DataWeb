@@ -91,7 +91,6 @@ button:hover {
 /* サブボタン（リセット・更新）のデザイン */
 .btn-secondary {
     background-color: #f1f2f6;
-    color: #2f3542;
     border: 1px solid #ced6e0;
     padding: 6px 12px;
     border-radius: 4px;
@@ -103,6 +102,15 @@ button:hover {
 .btn-secondary:hover {
     background-color: #dfe4ea;
     border-color: #a4b0be;
+}
+
+#btn-zoom-reset {
+    background-color: #ce4a4a;
+}
+
+#btn-reset {
+    background-color: #72d278;
+    color: black;
 }
 
 /* 更新中のボタン（無効化状態） */
