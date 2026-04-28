@@ -82,6 +82,29 @@ button:hover {
     background: #399ec2;
 }
 
+/* サブボタン（リセット・更新）のデザイン */
+.btn-secondary {
+    background-color: #f1f2f6;
+    color: #2f3542;
+    border: 1px solid #ced6e0;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+    background-color: #dfe4ea;
+    border-color: #a4b0be;
+}
+
+/* 更新中のボタン（無効化状態） */
+.btn-secondary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 #result-count {
     font-size: 0.9em;
     color: #666;
