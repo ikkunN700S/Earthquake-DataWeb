@@ -50,7 +50,7 @@ header .attention {
     flex-wrap: wrap;
     /* 画面が狭い時に折り返す */
     align-items: center;
-    gap: 15px;
+    gap: 10px;
     border-bottom: 1px solid #ddd;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
@@ -80,6 +80,12 @@ button {
 
 button:hover {
     background: #399ec2;
+}
+
+.sub-buttons {
+    display: flex;
+    gap: 10px;           /* ボタン同士の隙間 */
+    margin-left: auto;   /* 右寄せ */
 }
 
 /* サブボタン（リセット・更新）のデザイン */
