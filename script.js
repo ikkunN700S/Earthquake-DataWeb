@@ -15,8 +15,38 @@ let markerMap = {}; // 時刻をキーにしてマーカーを保持する
 let p2pApiDataList = [];     // API取得した100件のデータを丸ごと記憶
 let p2pOldestTimeMs = null;  // APIが持っている一番古い地震の時刻
 
-// 震度マーカーを管理する専用レイヤー
-let intensityLayerGroup = L.layerGroup();
+// --- 共通で使う震度の変換表 ---
+const INTENSITY_SCALE_MAP = { 70:'7', 60:'6強', 55:'6弱', 50:'5強', 45:'5弱', 40:'4', 30:'3', 20:'2', 10:'1' };
+const INTENSITY_CLASS_MAP = { 70:'scale-7', 60:'scale-6p', 55:'scale-6m', 50:'scale-5p', 45:'scale-5m', 40:'scale-4', 30:'scale-3', 20:'scale-2', 10:'scale-1' };
+
+// 震度専用のクラスターグループ
+let intensityClusterGroup = L.markerClusterGroup({
+    maxClusterRadius: 40, // まとめる範囲（少し狭めにして各地の震度を見やすくする）
+    iconCreateFunction: function (cluster) {
+        // クラスターに含まれる全マーカーを取得
+        const markers = cluster.getAllChildMarkers();
+        let maxScale = 0;
+        
+        // その地域の中での「最大震度」を計算する
+        markers.forEach(marker => {
+            if (marker.options.customScale > maxScale) {
+                maxScale = marker.options.customScale;
+            }
+        });
+
+        // 最大震度のデザインを取得
+        const scaleStr = INTENSITY_SCALE_MAP[maxScale];
+        const cssClass = INTENSITY_CLASS_MAP[maxScale];
+
+        // クラスターアイコン（少し大きくして白枠をつける）を作成
+        return L.divIcon({
+            className: 'custom-div-icon',
+            html: `<div class="intensity-marker ${cssClass}" style="width: 32px; height: 32px; font-size: 16px; border: 2px solid white;">${scaleStr.replace('強','+').replace('弱','-')}</div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+    }
+});
 
 // --- 観測点JSONのデータを保持する変数 ---
 let stationDataList = [];
@@ -72,8 +102,13 @@ function initMap() {
 }
 
 function resetSelection() {
-    // 震度マーカーを消す
-    intensityLayerGroup.clearLayers();
+    intensityClusterGroup.clearLayers(); // 震度ピンを消す
+    
+    // ▼ 追加：背景の青ピンが非表示なら再表示 ▼
+    if (!map.hasLayer(markerClusterGroup)) {
+        map.addLayer(markerClusterGroup);
+    }
+
     // 1. ピンの色を元の青に戻す
     if (currentSelectedMarker && defaultMarkerIcon) {
         currentSelectedMarker.setIcon(defaultMarkerIcon);
@@ -272,8 +307,13 @@ document.getElementById('btn-zoom-reset').addEventListener('click', () => {
 
 // 表示の更新処理（クラスタリング対応）
 function updateDisplay(dataList, message) {
-    // 震度マーカーを消す
-    intensityLayerGroup.clearLayers();
+    intensityClusterGroup.clearLayers(); // 震度ピンを消す
+
+    // ▼ 追加：背景の青ピンが非表示なら再度表示 ▼
+    if (!map.hasLayer(markerClusterGroup)) {
+        map.addLayer(markerClusterGroup);
+    }
+
     // 単独表示されている赤いピンがあれば消す
     if (currentSelectedMarker) {
         map.removeLayer(currentSelectedMarker);
@@ -471,13 +511,20 @@ function showIntensityData(event, timeMs) {
     const btn = event.target;
 
     if (box.style.display === 'block') {
+        // ▼ 閉じる時の処理 ▼
         box.style.display = 'none';
         btn.textContent = '▼ 各地の震度詳細を表示';
+        
+        intensityClusterGroup.clearLayers(); // 震度ピンを消す
+        if (!map.hasLayer(markerClusterGroup)) map.addLayer(markerClusterGroup); // 背景の青ピン再表示
         return;
     }
 
+    // ▼ 開く時の処理 ▼
     box.style.display = 'block';
     btn.textContent = '▲ 閉じる';
+    
+    if (map.hasLayer(markerClusterGroup)) map.removeLayer(markerClusterGroup); // 背景の青ピンを非表示
 
     // 1. 表示中のリストから、対象の地震の「地名(location)」を取得
     const targetEq = currentDataList.find(eq => eq.timeMs === timeMs);
@@ -564,25 +611,20 @@ async function prefetchApiData() {
 
 // 地図上に観測点ごとの震度マーカーを描画する
 function drawIntensityMarkersOnMap(points) {
-    // 1. まず古い震度マーカーをすべて消す
-    intensityLayerGroup.clearLayers();
+    // 古いマーカーを消す
+    intensityClusterGroup.clearLayers();
     
-    // 2. レイヤーを地図に追加する（まだ追加されていなければ）
-    if (!map.hasLayer(intensityLayerGroup)) {
-        intensityLayerGroup.addTo(map);
+    // クラスターを地図に追加
+    if (!map.hasLayer(intensityClusterGroup)) {
+        intensityClusterGroup.addTo(map);
     }
 
-    // 震度変換マップ
-    const scaleMap = { 70:'7', 60:'6強', 55:'6弱', 50:'5強', 45:'5弱', 40:'4', 30:'3', 20:'2', 10:'1' };
-    const classMap = { 70:'scale-7', 60:'scale-6p', 55:'scale-6m', 50:'scale-5p', 45:'scale-5m', 40:'scale-4', 30:'scale-3', 20:'scale-2', 10:'scale-1' };
-
     points.forEach(point => {
-        // ここで関数を呼び出して座標を取得
         const coords = getCoordinates(point.pref, point.addr);
 
         if (coords) {
-            const scaleStr = scaleMap[point.scale];
-            const cssClass = classMap[point.scale];
+            const scaleStr = INTENSITY_SCALE_MAP[point.scale];
+            const cssClass = INTENSITY_CLASS_MAP[point.scale];
 
             const intensityIcon = L.divIcon({
                 className: 'custom-div-icon',
@@ -591,7 +633,15 @@ function drawIntensityMarkersOnMap(points) {
                 iconAnchor: [12, 12]
             });
 
-            L.marker(coords, { icon: intensityIcon, zIndexOffset: 500 }).addTo(intensityLayerGroup);
+            // ★ポイント：customScaleというオプションに数値（point.scale）を持たせておく
+            const marker = L.marker(coords, { 
+                icon: intensityIcon, 
+                zIndexOffset: 500,
+                customScale: point.scale 
+            });
+            
+            // クラスターに追加
+            intensityClusterGroup.addLayer(marker);
         }
     });
 }
