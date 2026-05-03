@@ -360,6 +360,33 @@ function selectMarker(timeMs, data, fromPanel = false) {
     const marker = markerMap[timeMs];
     if (!marker) return;
 
+    if (currentSelectedMarker && currentSelectedMarker !== marker) {
+        
+        // 1. エラー防止！ 青ピン(クラスター)が隠れていた場合、ピンを戻す前に必ず復活させる
+        if (!map.hasLayer(markerClusterGroup)) {
+            map.addLayer(markerClusterGroup);
+        }
+        
+        // 2. 震度マーカーが出っぱなしなら消す
+        if (typeof intensityClusterGroup !== 'undefined') {
+            intensityClusterGroup.clearLayers();
+        }
+        
+        // 3. 別の地震の「震度詳細パネル」が開いたままなら、見た目を強制的に閉じる
+        document.querySelectorAll('.intensity-details-container').forEach(box => {
+            box.style.display = 'none';
+        });
+        document.querySelectorAll('.intensity-btn').forEach(btn => {
+            if (btn.textContent === '▲ 閉じる') btn.textContent = '▼ 各地の震度詳細を表示';
+        });
+
+        // 4. 安全な状態になったので、元の赤いピンを青色に戻して群れに帰す
+        currentSelectedMarker.setIcon(defaultMarkerIcon);
+        currentSelectedMarker.setZIndexOffset(0);
+        map.removeLayer(currentSelectedMarker);
+        markerClusterGroup.addLayer(currentSelectedMarker);
+    }
+
     // ズームレベル設定
     const targetZoom = 10;
 
@@ -507,6 +534,16 @@ function showDetail(data) {
 function showIntensityData(event, timeMs) {
     event.stopPropagation();
 
+    // ★ 1. まず表示中のリストから、対象の地震データを取得する（処理を一番上に移動）
+    const targetEq = currentDataList.find(eq => eq.timeMs === timeMs);
+    if (!targetEq) return;
+
+    // ★ 2. 追加：もしこの地震がまだ選択（赤いピン）されていなければ、自動的に選択する
+    if (!currentSelectedMarker || currentSelectedMarker !== markerMap[timeMs]) {
+        // 3番目の引数(fromPanel)を true にして、リストの再描画を防ぐ
+        selectMarker(timeMs, targetEq, true);
+    }
+
     const box = document.getElementById(`intensity-box-${timeMs}`);
     const btn = event.target;
 
@@ -523,16 +560,19 @@ function showIntensityData(event, timeMs) {
     // ▼ 開く時の処理 ▼
     box.style.display = 'block';
     btn.textContent = '▲ 閉じる';
-    
-    if (map.hasLayer(markerClusterGroup)) map.removeLayer(markerClusterGroup); // 背景の青ピンを非表示
 
+    // 地図のズーム・移動アニメーション（約250ms）が完全に終わるのを待ってから青ピンを消去する
+    setTimeout(() => {
+        if (map.hasLayer(markerClusterGroup)) {
+            map.removeLayer(markerClusterGroup); 
+        }
+    }, 400);
+    
     // 1. 表示中のリストから、対象の地震の「地名(location)」を取得
-    const targetEq = currentDataList.find(eq => eq.timeMs === timeMs);
-    if (!targetEq) return;
     const targetLocation = targetEq.location;
 
     // 2. 時間と地名の「複合条件」でAPIデータから検索する
-    const targetTime = new Date(timeMs).getTime();
+    const targetTime = targetEq.timeMs;
     const matchedData = p2pApiDataList.find(apiData => {
         // API側のデータがない場合はスキップ
         if (!apiData.earthquake || !apiData.earthquake.hypocenter) return false;
