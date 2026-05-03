@@ -15,6 +15,24 @@ let markerMap = {}; // 時刻をキーにしてマーカーを保持する
 let p2pApiDataList = [];     // API取得した100件のデータを丸ごと記憶
 let p2pOldestTimeMs = null;  // APIが持っている一番古い地震の時刻
 
+// 震度マーカーを管理する専用レイヤー
+let intensityLayerGroup = L.layerGroup();
+
+// --- 観測点JSONのデータを保持する変数 ---
+let stationDataList = [];
+
+// --- JIS都道府県コード表（インデックス番号＝コード番号） ---
+// ※ 0番目は空にして、1番目を北海道にすることで番号を一致させます
+const PREF_NAMES = [
+    "", "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
+    "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県",
+    "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県",
+    "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県",
+    "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県",
+    "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県",
+    "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"
+];
+
 // 選択した時に表示する「赤いピン」の定義（外部の無料アイコンを利用）
 const selectedIcon = new L.Icon({
     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
@@ -54,6 +72,8 @@ function initMap() {
 }
 
 function resetSelection() {
+    // 震度マーカーを消す
+    intensityLayerGroup.clearLayers();
     // 1. ピンの色を元の青に戻す
     if (currentSelectedMarker && defaultMarkerIcon) {
         currentSelectedMarker.setIcon(defaultMarkerIcon);
@@ -252,6 +272,8 @@ document.getElementById('btn-zoom-reset').addEventListener('click', () => {
 
 // 表示の更新処理（クラスタリング対応）
 function updateDisplay(dataList, message) {
+    // 震度マーカーを消す
+    intensityLayerGroup.clearLayers();
     // 単独表示されている赤いピンがあれば消す
     if (currentSelectedMarker) {
         map.removeLayer(currentSelectedMarker);
@@ -515,6 +537,7 @@ function showIntensityData(event, timeMs) {
     });
 
     box.innerHTML = html;
+    drawIntensityMarkersOnMap(matchedData.points);
 }
 
 // P2P地震情報APIのデータを裏側で事前取得する
@@ -539,6 +562,85 @@ async function prefetchApiData() {
     }
 }
 
-prefetchApiData();
+// 地図上に観測点ごとの震度マーカーを描画する
+function drawIntensityMarkersOnMap(points) {
+    // 1. まず古い震度マーカーをすべて消す
+    intensityLayerGroup.clearLayers();
+    
+    // 2. レイヤーを地図に追加する（まだ追加されていなければ）
+    if (!map.hasLayer(intensityLayerGroup)) {
+        intensityLayerGroup.addTo(map);
+    }
+
+    // 震度変換マップ
+    const scaleMap = { 70:'7', 60:'6強', 55:'6弱', 50:'5強', 45:'5弱', 40:'4', 30:'3', 20:'2', 10:'1' };
+    const classMap = { 70:'scale-7', 60:'scale-6p', 55:'scale-6m', 50:'scale-5p', 45:'scale-5m', 40:'scale-4', 30:'scale-3', 20:'scale-2', 10:'scale-1' };
+
+    points.forEach(point => {
+        // ここで関数を呼び出して座標を取得
+        const coords = getCoordinates(point.pref, point.addr);
+
+        if (coords) {
+            const scaleStr = scaleMap[point.scale];
+            const cssClass = classMap[point.scale];
+
+            const intensityIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div class="intensity-marker ${cssClass}">${scaleStr.replace('強','+').replace('弱','-')}</div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+
+            L.marker(coords, { icon: intensityIcon, zIndexOffset: 500 }).addTo(intensityLayerGroup);
+        }
+    });
+}
+
+// 観測点JSONデータの読み込み
+async function loadStationData() {
+    try {
+        // 保存したJSONファイルを読み込む（ファイル名は適宜合わせてください）
+        const res = await fetch('stations.json');
+        stationDataList = await res.json();
+        console.log("📍 観測点データを読み込みました（計 " + stationDataList.length + " 件）");
+    } catch (error) {
+        console.error("観測点JSONの読み込みに失敗しました:", error);
+    }
+}
+
+// APIの地名から、JSONの座標を探し出す魔法の関数
+function getCoordinates(apiPref, apiAddr) {
+    // 1. APIの「沖縄県」から、コード「47」を逆引きする
+    const prefCodeNum = PREF_NAMES.indexOf(apiPref);
+    if (prefCodeNum === -1) return null; // 見つからなければ中止
+    
+    // JSONの pref は文字列（"47"）の場合があるため、文字列に変換しておく
+    const prefCodeStr = prefCodeNum.toString();
+
+    // 2. 観測点リストからマッチするものを探す
+    const matchedStation = stationDataList.find(station => {
+        // 条件A: 都道府県コードが一致しているか（例: "47" === "47" または 47 === 47）
+        const isPrefMatch = (station.pref == prefCodeStr);
+        
+        // 条件B: JSONの名前(石垣市真栄里)に、APIの地名(石垣市)が含まれているか（部分一致）
+        const isNameMatch = station.name.includes(apiAddr);
+
+        return isPrefMatch && isNameMatch;
+    });
+
+    // 3. 見つかったら、緯度経度を数値にして返す
+    if (matchedStation) {
+        return [parseFloat(matchedStation.lat), parseFloat(matchedStation.lon)];
+    }
+    
+    return null; // 見つからなかった場合
+}
+
+async function initializeApp() {
+    await loadStationData(); // 先にJSONを読み込む
+    await prefetchApiData(); // 次にP2P地震履歴を読み込む
+}
+
+initializeApp();
 
 loadData();

@@ -261,6 +261,31 @@ main {
     background-color: #600239 !important;
 }
 
+.intensity-marker {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid #333;
+    font-weight: bold;
+    font-size: 14px;
+    color: #333;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+/* 震度ごとの背景色（気象庁の配色に準拠） */
+.scale-7  { background-color: #600239; color: white; }
+.scale-6p { background-color: #8a0557; color: white; }
+.scale-6m { background-color: #b40671; color: white; }
+.scale-5p { background-color: #a50021; color: white; }
+.scale-5m { background-color: #ff3300; color: white; }
+.scale-4  { background-color: #ffb100; }
+.scale-3  { background-color: #fae600; }
+.scale-2  { background-color: #72d278; }
+.scale-1  { background-color: #8bafd6; }
+
 .intensity-btn {
     display: block;
     width: 100%;
