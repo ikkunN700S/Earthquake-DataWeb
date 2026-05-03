@@ -103,6 +103,44 @@ function initMap() {
     });
 }
 
+// 地図とパネルの状態を「完全リセット」する関数
+// （検索時や、全体表示に戻す時に必ず呼ぶ）
+function forceResetMapState() {
+    // 1. 実行待ちの描画タイマー（震度マーカー展開など）があればキャンセル
+    if (typeof intensityRenderTimeout !== 'undefined' && intensityRenderTimeout) {
+        clearTimeout(intensityRenderTimeout);
+    }
+
+    // 2. 震度マーカー（カラフルな丸）を出していたら一掃する
+    if (typeof intensityClusterGroup !== 'undefined') {
+        intensityClusterGroup.clearLayers();
+    }
+
+    // 3. ★最も重要★ 背景の青ピン（クラスター）が隠れていたら、必ず地図に復活させる
+    if (typeof markerClusterGroup !== 'undefined' && !map.hasLayer(markerClusterGroup)) {
+        map.addLayer(markerClusterGroup);
+    }
+
+    // 4. 赤くなっている選択中ピンがあれば、青に戻して群れに帰す
+    if (typeof currentSelectedMarker !== 'undefined' && currentSelectedMarker) {
+        currentSelectedMarker.setIcon(defaultMarkerIcon);
+        currentSelectedMarker.setZIndexOffset(0);
+        if (map.hasLayer(currentSelectedMarker)) {
+            map.removeLayer(currentSelectedMarker);
+        }
+        markerClusterGroup.addLayer(currentSelectedMarker);
+        currentSelectedMarker = null; // 選択状態を完全に解除
+    }
+
+    // 5. 開きっぱなしの震度パネルの見た目を強制的に閉じる
+    document.querySelectorAll('.intensity-details-container').forEach(box => {
+        box.style.display = 'none';
+    });
+    document.querySelectorAll('.intensity-btn').forEach(btn => {
+        if (btn.textContent === '▲ 閉じる') btn.textContent = '▼ 各地の震度詳細を表示';
+    });
+}
+
 function resetSelection() {
     intensityClusterGroup.clearLayers(); // 震度ピンを消す
     
@@ -309,6 +347,9 @@ document.getElementById('btn-zoom-reset').addEventListener('click', () => {
 
 // 表示の更新処理（クラスタリング対応）
 function updateDisplay(dataList, message) {
+    // リセット処理
+    forceResetMapState();
+    
     intensityClusterGroup.clearLayers(); // 震度ピンを消す
 
     // ▼ 追加：背景の青ピンが非表示なら再度表示 ▼
