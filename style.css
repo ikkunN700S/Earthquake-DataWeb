@@ -261,6 +261,102 @@ main {
     background-color: #600239 !important;
 }
 
+.intensity-marker {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid #333;
+    font-weight: bold;
+    font-size: 14px;
+    color: #333;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+/* 震度ごとの背景色（気象庁の配色に準拠） */
+.scale-7  { background-color: #600239; color: white; }
+.scale-6p { background-color: #8a0557; color: white; }
+.scale-6m { background-color: #b40671; color: white; }
+.scale-5p { background-color: #a50021; color: white; }
+.scale-5m { background-color: #ff3300; color: white; }
+.scale-4  { background-color: #ffb100; }
+.scale-3  { background-color: #fae600; }
+.scale-2  { background-color: #72d278; }
+.scale-1  { background-color: #8bafd6; }
+
+.intensity-btn {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 6px;
+    background-color: #f1f2f6;
+    color: #333;
+    border: 1px solid #dfe4ea;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.intensity-btn:hover {
+    background-color: #eccc68; /* 少し目立つ色に */
+}
+
+.intensity-btn:disabled {
+    background-color: #f1f2f6;
+    color: #a4b0be;
+    border-color: #dfe4ea;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.intensity-btn:disabled:hover {
+    background-color: #f1f2f6; /* ホバーしても色を変えない */
+}
+
+.intensity-details-container {
+    margin-top: 10px;
+    font-size: 0.85rem;
+    border-top: 1px dashed #ced6e0;
+    padding-top: 10px;
+    display: none; /* 最初は隠しておく */
+}
+
+/* 震度ごとのグループ */
+.intensity-group {
+    margin-bottom: 8px;
+}
+
+.intensity-group-title {
+    font-weight: bold;
+    color: #2f3542;
+    margin-bottom: 4px;
+    border-left: 3px solid #ff4757;
+    padding-left: 5px;
+}
+
+.intensity-group-areas {
+    color: #57606f;
+    line-height: 1.4;
+    padding-left: 8px;
+}
+
+/* ローディング表示 */
+.loading-text {
+    text-align: center;
+    color: #747d8c;
+    font-style: italic;
+    animation: blink 1s infinite alternate;
+}
+
+@keyframes blink {
+    from { opacity: 1; }
+    to { opacity: 0.4; }
+}
+
 /* フッター全体のコンテナ設定 */
 footer {
     background-color: #2c3e50;
