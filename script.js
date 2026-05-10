@@ -106,36 +106,39 @@ function initMap() {
 // 地図とパネルの状態を「完全リセット」する関数
 // （検索時や、全体表示に戻す時に必ず呼ぶ）
 function forceResetMapState() {
-    // 1. 実行待ちの描画タイマー（震度マーカー展開など）があればキャンセル
-    if (typeof intensityRenderTimeout !== 'undefined' && intensityRenderTimeout) {
-        clearTimeout(intensityRenderTimeout);
-    }
-
-    // 2. 震度マーカー（カラフルな丸）を出していたら一掃する
+    // ピンを戻す
     if (typeof intensityClusterGroup !== 'undefined') {
-        intensityClusterGroup.clearLayers();
+        intensityClusterGroup.clearLayers(); // 震度ピンを消す
     }
-
-    // 3. ★最も重要★ 背景の青ピン（クラスター）が隠れていたら、必ず地図に復活させる
     if (typeof markerClusterGroup !== 'undefined' && !map.hasLayer(markerClusterGroup)) {
-        map.addLayer(markerClusterGroup);
+        map.addLayer(markerClusterGroup); // 背景の青ピンが非表示なら再表示 ▼
     }
 
-    // 4. 赤くなっている選択中ピンがあれば、青に戻して群れに帰す
     if (typeof currentSelectedMarker !== 'undefined' && currentSelectedMarker) {
-        currentSelectedMarker.setIcon(window.defaultMarkerIcon || defaultMarkerIcon);
-        currentSelectedMarker.setZIndexOffset(0);
+        
+        // ① 先にマップから外す（画面上から消すことで、ブラウザのパニックを防ぐ）
         if (map.hasLayer(currentSelectedMarker)) {
             map.removeLayer(currentSelectedMarker);
         }
+
+        // ② 画面外にいる間に、こっそり青色に着替えさせる
+        // （defaultMarkerIcon ではなく、ピン自身が記憶している青色を使う）
+        if (currentSelectedMarker.originalIcon) {
+            currentSelectedMarker.setIcon(currentSelectedMarker.originalIcon);
+        } else if (typeof defaultMarkerIcon !== 'undefined' && defaultMarkerIcon) {
+            // 万が一記憶していなかった場合の予備
+            currentSelectedMarker.setIcon(defaultMarkerIcon);
+        }
+        
+        currentSelectedMarker.setZIndexOffset(0);
+        
+        // ③ 青色に戻った状態で、クラスター管理に戻す
         markerClusterGroup.addLayer(currentSelectedMarker);
-        currentSelectedMarker = null; // 選択状態を完全に解除
+
+        currentSelectedMarker = null;
     }
 
-    // 5. 開きっぱなしの震度パネルの見た目を強制的に閉じる
-    document.querySelectorAll('.intensity-details-container').forEach(box => {
-        box.style.display = 'none';
-    });
+    document.querySelectorAll('.intensity-details-container').forEach(box => box.style.display = 'none');
     document.querySelectorAll('.intensity-btn').forEach(btn => {
         if (btn.textContent === '▲ 閉じる') btn.textContent = '▼ 各地の震度詳細を表示';
     });
@@ -144,18 +147,30 @@ function forceResetMapState() {
 function resetSelection() {
     intensityClusterGroup.clearLayers(); // 震度ピンを消す
     
-    // ▼ 追加：背景の青ピンが非表示なら再表示 ▼
+    // 背景の青ピンが非表示なら再表示 ▼
     if (!map.hasLayer(markerClusterGroup)) {
         map.addLayer(markerClusterGroup);
     }
 
-    // 1. ピンの色を元の青に戻す
-    if (currentSelectedMarker && defaultMarkerIcon) {
-        currentSelectedMarker.setIcon(defaultMarkerIcon);
+    if (typeof currentSelectedMarker !== 'undefined' && currentSelectedMarker) {
+        
+        // ① 先にマップから外す（画面上から消すことで、ブラウザのパニックを防ぐ）
+        if (map.hasLayer(currentSelectedMarker)) {
+            map.removeLayer(currentSelectedMarker);
+        }
+
+        // ② 画面外にいる間に、こっそり青色に着替えさせる
+        // （defaultMarkerIcon ではなく、ピン自身が記憶している青色を使う）
+        if (currentSelectedMarker.originalIcon) {
+            currentSelectedMarker.setIcon(currentSelectedMarker.originalIcon);
+        } else if (typeof defaultMarkerIcon !== 'undefined' && defaultMarkerIcon) {
+            // 万が一記憶していなかった場合の予備
+            currentSelectedMarker.setIcon(defaultMarkerIcon);
+        }
+        
         currentSelectedMarker.setZIndexOffset(0);
         
-        // 単独表示をやめて、クラスター管理に戻す
-        map.removeLayer(currentSelectedMarker);
+        // ③ 青色に戻った状態で、クラスター管理に戻す
         markerClusterGroup.addLayer(currentSelectedMarker);
 
         currentSelectedMarker = null;
@@ -192,7 +207,7 @@ function executeSearch() {
     // ピンを再配置
     updateDisplay(currentDataList, "検索結果");
 
-    // ★検索した直後も「最新3件」を表示させるために呼び出す
+    // ★検索した直後も「最新10件」を表示させるために呼び出す
     resetSelection();
 }
 
@@ -275,7 +290,7 @@ function executeSearch() {
 
     // ピンを再配置
     updateDisplay(currentDataList, "検索結果");
-    // 検索後の最新3件表示呼び出し
+    // 検索後の最新10件表示呼び出し
     resetSelection();
 }
 
@@ -406,6 +421,10 @@ function selectMarker(timeMs, data, fromPanel = false) {
     // すでに選択中のマーカーを押した場合は何もしない
     if (currentSelectedMarker === marker) return;
 
+    if (!marker.originalIcon) {
+        marker.originalIcon = marker.getIcon(); // 元の青アイコンを自分に記憶させる
+    }
+
     // 地図のピン、震度マーカー、パネルの状態などをすべて確実な初期状態に戻す
     if (typeof forceResetMapState === 'function') {
         forceResetMapState();
@@ -437,7 +456,7 @@ function selectMarker(timeMs, data, fromPanel = false) {
 
     // パネルからのクリックではない時のみ、詳細表示に切り替える
     if (!fromPanel && data) {
-        renderDetails([data]);
+        showDetail([data]);
     }
 }
 
