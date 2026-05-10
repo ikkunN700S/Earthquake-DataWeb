@@ -123,7 +123,7 @@ function forceResetMapState() {
 
     // 4. 赤くなっている選択中ピンがあれば、青に戻して群れに帰す
     if (typeof currentSelectedMarker !== 'undefined' && currentSelectedMarker) {
-        currentSelectedMarker.setIcon(defaultMarkerIcon);
+        currentSelectedMarker.setIcon(window.defaultMarkerIcon || defaultMarkerIcon);
         currentSelectedMarker.setZIndexOffset(0);
         if (map.hasLayer(currentSelectedMarker)) {
             map.removeLayer(currentSelectedMarker);
@@ -352,7 +352,7 @@ function updateDisplay(dataList, message) {
     
     intensityClusterGroup.clearLayers(); // 震度ピンを消す
 
-    // ▼ 追加：背景の青ピンが非表示なら再度表示 ▼
+    // 背景の青ピンが非表示なら再度表示 ▼
     if (!map.hasLayer(markerClusterGroup)) {
         map.addLayer(markerClusterGroup);
     }
@@ -403,77 +403,41 @@ function selectMarker(timeMs, data, fromPanel = false) {
     const marker = markerMap[timeMs];
     if (!marker) return;
 
-    if (currentSelectedMarker && currentSelectedMarker !== marker) {
-        
-        // 1. エラー防止！ 青ピン(クラスター)が隠れていた場合、ピンを戻す前に必ず復活させる
-        if (!map.hasLayer(markerClusterGroup)) {
-            map.addLayer(markerClusterGroup);
-        }
-        
-        // 2. 震度マーカーが出っぱなしなら消す
-        if (typeof intensityClusterGroup !== 'undefined') {
-            intensityClusterGroup.clearLayers();
-        }
-        
-        // 3. 別の地震の「震度詳細パネル」が開いたままなら、見た目を強制的に閉じる
-        document.querySelectorAll('.intensity-details-container').forEach(box => {
-            box.style.display = 'none';
-        });
-        document.querySelectorAll('.intensity-btn').forEach(btn => {
-            if (btn.textContent === '▲ 閉じる') btn.textContent = '▼ 各地の震度詳細を表示';
-        });
+    // すでに選択中のマーカーを押した場合は何もしない
+    if (currentSelectedMarker === marker) return;
 
-        // 4. 安全な状態になったので、元の赤いピンを青色に戻して群れに帰す
-        currentSelectedMarker.setIcon(defaultMarkerIcon);
-        currentSelectedMarker.setZIndexOffset(0);
-        map.removeLayer(currentSelectedMarker);
-        markerClusterGroup.addLayer(currentSelectedMarker);
+    // 地図のピン、震度マーカー、パネルの状態などをすべて確実な初期状態に戻す
+    if (typeof forceResetMapState === 'function') {
+        forceResetMapState();
     }
 
-    // ズームレベル設定
-    const targetZoom = 10;
+    // デフォルトの青ピンアイコンを記憶（安全のため window にも保存）
+    if (typeof defaultMarkerIcon === 'undefined' || !defaultMarkerIcon) {
+        window.defaultMarkerIcon = marker.getIcon();
+    }
 
-    // クラスター（円）の中に隠れている場合、そこまで自動でズームして展開する
-    const performFocus = () => {
-        // 既存の選択を解除
-        if (currentSelectedMarker && defaultMarkerIcon) {
-            currentSelectedMarker.setIcon(defaultMarkerIcon);
-            currentSelectedMarker.setZIndexOffset(0); // 重なり順をリセット
-            map.removeLayer(currentSelectedMarker); // 単独表示から外す
-            markerClusterGroup.addLayer(currentSelectedMarker); // クラスターの群れに戻す
-        }
+    // 選択したピンを赤くし、最前面へ
+    marker.setIcon(selectedIcon);
+    marker.setZIndexOffset(1000);
 
-        // 初回のみ：元のアイコンを記憶
-        if (!defaultMarkerIcon) defaultMarkerIcon = marker.getIcon();
-
-        // 選択されたマーカーを赤くし、地図を移動させる
-        marker.setIcon(selectedIcon);
-        marker.setZIndexOffset(1000); // 常に他のピンやクラスターより「最前面」に表示する
-
-        // クラスターから引き抜き、地図に直接配置する
-        if (markerClusterGroup.hasLayer(marker)) {
-            markerClusterGroup.removeLayer(marker); 
-            map.addLayer(marker);
-        }
-
-        currentSelectedMarker = marker;
-
-        // 地図の移動（ズームレベルを少し上げて中心に）
-        map.setView(marker.getLatLng(), targetZoom, { animate: true });
-    };
-
-    // --- 分岐処理 ---
+    // クラスター群から引き抜いて地図に直接刺す
     if (markerClusterGroup.hasLayer(marker)) {
-        // A. ピンがクラスターに隠れている場合：展開してからズーム
-        markerClusterGroup.zoomToShowLayer(marker, performFocus);
-    } else {
-        // B. すでに独立している、または単独で表示されている場合：即座にズーム
-        performFocus();
+        markerClusterGroup.removeLayer(marker);
     }
+    if (!map.hasLayer(marker)) {
+        map.addLayer(marker);
+    }
+    
+    // 現在の選択マーカーとして更新
+    currentSelectedMarker = marker;
 
-    // パネル表示も更新（引数のdataがあれば使用、なければ検索リストから探す）
-    if (!fromPanel &&data) {
-        showDetail([data]);
+    // 地図をズーム
+    const targetZoom = Math.max(map.getZoom(), 10);
+    map.setView(marker.getLatLng(), targetZoom, { animate: true });
+
+    // パネルからのクリックではない時のみ、詳細表示に切り替える
+    if (!fromPanel && data) {
+        renderDetails([data]);
     }
 }
 
@@ -581,7 +545,7 @@ function showIntensityData(event, timeMs) {
     const targetEq = currentDataList.find(eq => eq.timeMs === timeMs);
     if (!targetEq) return;
 
-    // ★ 2. 追加：もしこの地震がまだ選択（赤いピン）されていなければ、自動的に選択する
+    // ★ 2. もしこの地震がまだ選択（赤いピン）されていなければ、自動的に選択する
     if (!currentSelectedMarker || currentSelectedMarker !== markerMap[timeMs]) {
         // 3番目の引数(fromPanel)を true にして、リストの再描画を防ぐ
         selectMarker(timeMs, targetEq, true);
