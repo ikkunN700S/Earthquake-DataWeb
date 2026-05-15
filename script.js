@@ -680,7 +680,7 @@ async function prefetchApiData() {
 
         // もしすでに画面にリストが表示されていたら、ボタン状態を反映させるために再描画する
         if (typeof currentDataList !== 'undefined' && currentDataList.length > 0) {
-            renderDetails(currentDataList);
+            showDetail(currentDataList);
         }
     } catch (error) {
         console.error("APIの事前取得に失敗しました:", error);
