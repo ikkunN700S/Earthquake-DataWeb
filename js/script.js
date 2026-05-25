@@ -106,6 +106,9 @@ function initMap() {
 // 地図とパネルの状態を「完全リセット」する関数
 // （検索時や、全体表示に戻す時に必ず呼ぶ）
 function forceResetMapState() {
+    // 地震非表示の際にクリックされた場合再表示
+    ensureEarthquakesVisible();
+
     // ピンを戻す
     if (typeof intensityClusterGroup !== 'undefined') {
         intensityClusterGroup.clearLayers(); // 震度ピンを消す
@@ -178,7 +181,7 @@ function resetSelection() {
 
     // 2. パネルを「現在検索で絞り込まれている中の最新10件」に戻す
     if (currentDataList.length > 0) {
-        showDetail(currentDataList.slice(0, 10));
+        showDetail(currentDataList.slice(0, 20));
     } else {
         document.getElementById('details').innerHTML = ''; // 0件の場合は空にする
     }
@@ -711,12 +714,32 @@ function drawIntensityMarkersOnMap(points) {
                 iconAnchor: [12, 12]
             });
 
-            // ★ポイント：customScaleというオプションに数値（point.scale）を持たせておく
+            // customScaleというオプションに数値（point.scale）を持たせておく
             const marker = L.marker(coords, { 
                 icon: intensityIcon, 
                 zIndexOffset: 500,
                 customScale: point.scale 
             });
+
+            const locationName = `${point.pref} ${point.addr}`;
+            const lat = coords[0];
+            const lon = coords[1];
+
+            // stations-viewer.js と同じデザインをベースに、震度の文字色を少し目立たせて追加
+            marker.bindPopup(`
+                <div style="text-align: center; min-width: 150px;">
+                    <strong style="display: block; font-size: 14px; color: #2f3542; margin-bottom: 8px; border-bottom: 2px solid #ced6e0; padding-bottom: 4px;">
+                        ${locationName}
+                    </strong>
+                    <div style="font-size: 14px; font-weight: bold; color: #400b0f; margin-bottom: 6px;">
+                        震度 ${scaleStr}
+                    </div>
+                    <div style="font-size: 12px; color: #57606f; line-height: 1.5;">
+                        <div>緯度: <strong>${lat.toFixed(2)}</strong></div>
+                        <div>経度: <strong>${lon.toFixed(2)}</strong></div>
+                    </div>
+                </div>
+            `);
             
             // クラスターに追加
             intensityClusterGroup.addLayer(marker);
@@ -767,6 +790,54 @@ function getCoordinates(apiPref, apiAddr) {
 async function initializeApp() {
     await loadStationData(); // 先にJSONを読み込む
     await prefetchApiData(); // 次にP2P地震履歴を読み込む
+}
+
+// 地震レイヤーの表示/非表示ロジック
+let isEarthquakesVisible = true;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const eqToggleBtn = document.getElementById('toggle-earthquake-btn');
+    if (eqToggleBtn) {
+        eqToggleBtn.addEventListener('change', (e) => {
+            isEarthquakesVisible = e.target.checked;
+            updateEarthquakeVisibility();
+        });
+    }
+});
+
+function updateEarthquakeVisibility() {
+    if (!isEarthquakesVisible) {
+        // OFFになったら、地震に関するすべてのレイヤーを一時的に隠す
+        if (map.hasLayer(markerClusterGroup)) map.removeLayer(markerClusterGroup);
+        if (typeof currentSelectedMarker !== 'undefined' && currentSelectedMarker && map.hasLayer(currentSelectedMarker)) map.removeLayer(currentSelectedMarker);
+        if (typeof intensityClusterGroup !== 'undefined' && map.hasLayer(intensityClusterGroup)) map.removeLayer(intensityClusterGroup);
+    } else {
+        // ONになったら、現在の操作状況（ステータス）に応じて正しく復元する
+        const isIntensityOpen = Array.from(document.querySelectorAll('.intensity-details-container')).some(box => box.style.display === 'block');
+        
+        if (isIntensityOpen) {
+            // 震度詳細パネルが開いている状態なら、赤ピンと震度マーカーだけ復活
+            if (typeof currentSelectedMarker !== 'undefined' && currentSelectedMarker && !map.hasLayer(currentSelectedMarker)) map.addLayer(currentSelectedMarker);
+            if (typeof intensityClusterGroup !== 'undefined' && !map.hasLayer(intensityClusterGroup)) map.addLayer(intensityClusterGroup);
+        } else if (typeof currentSelectedMarker !== 'undefined' && currentSelectedMarker) {
+            // 赤ピン（単独選択）状態なら、青ピン群と赤ピンを復活
+            if (!map.hasLayer(markerClusterGroup)) map.addLayer(markerClusterGroup);
+            if (!map.hasLayer(currentSelectedMarker)) map.addLayer(currentSelectedMarker);
+        } else {
+            // 何も選択されていなければ、青ピン群のみ復活
+            if (!map.hasLayer(markerClusterGroup)) map.addLayer(markerClusterGroup);
+        }
+    }
+}
+
+// ユーザーがサイドパネルで地震をクリックした時に、自動でトグルをONに戻す安全装置
+function ensureEarthquakesVisible() {
+    const eqToggleBtn = document.getElementById('toggle-earthquake-btn');
+    if (eqToggleBtn && !eqToggleBtn.checked) {
+        eqToggleBtn.checked = true;
+        isEarthquakesVisible = true;
+        updateEarthquakeVisibility();
+    }
 }
 
 initializeApp();
