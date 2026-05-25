@@ -42,6 +42,79 @@ header .attention {
     /* 複数行になった時の行間を見やすく */
 }
 
+/* 小さなグレーの観測点マーカー */
+.station-dot-marker {
+    background-color: #747d8c;
+    border: 1.5px solid #ffffff;
+    border-radius: 50%;
+    width: 10px;
+    height: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+/* 2つのトグルを並べるためのコンテナ */
+.map-toggle-container {
+    display: flex;
+    gap: 15px;          /* トグル同士の隙間 */
+    flex-wrap: wrap;    /* スマホなどで狭い場合は折り返す */
+    justify-content: flex-end;
+    align-items: center;
+
+    padding: 6px 12px;
+    background-color: #399ec2;
+}
+
+.station-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #2f3542;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+/* スイッチの四角い枠 */
+.station-toggle-label input {
+    display: none; /* デフォルトのチェックボックスを隠す */
+}
+
+.station-toggle-slider {
+    width: 36px;
+    height: 20px;
+    background-color: #ced6e0;
+    border-radius: 20px;
+    position: relative;
+    transition: 0.3s;
+}
+
+/* スイッチの丸いポッチ */
+.station-toggle-slider::before {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: white;
+    top: 2px;
+    left: 2px;
+    transition: 0.3s;
+}
+
+/* チェックされた時の状態 */
+.station-toggle-label input:checked + .station-toggle-slider {
+    background-color: #2f333e; /* 緑色に */
+}
+
+.station-toggle-label input:checked + .station-toggle-slider::before {
+    transform: translateX(16px);
+}
+
+#toggle-earthquake-btn:checked + .earthquake-slider {
+    background-color: #2f333e; 
+}
+
 /* 検索バーのスタイル */
 #search-bar {
     background: white;

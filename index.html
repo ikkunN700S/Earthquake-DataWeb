@@ -17,6 +17,19 @@
         <h1>地震データベースWeb</h1>
         <p class="attention">2023年03月03日以降の地震データを閲覧できます。<br>地震規模が更新された場合、同一日時データが複数表示されます。<br>2026年04月24日以前の震央は代表地点が表示されます。</p>
     </header>
+
+    <div class="map-toggle-container">
+        <label class="station-toggle-label">
+            <input type="checkbox" id="toggle-earthquake-btn" checked>
+            <span class="station-toggle-slider earthquake-slider"></span>
+            地震ピンを表示
+        </label>
+        <label class="station-toggle-label">
+            <input type="checkbox" id="toggle-stations-btn">
+            <span class="station-toggle-slider"></span>
+            震度観測点をすべて表示
+        </label>
+    </div>
     
     <section id="search-bar">
         <button id="btn-zoom-reset" class="btn-secondary">日本全体</button>
@@ -71,7 +84,8 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script src="script.js"></script>
+    <script src="./js/script.js"></script>
+    <script src="./js/stations-viewer.js"></script>
 
     <footer>
         <p class="copyright">&copy; 2026 ikkunN700S</p>
@@ -79,8 +93,8 @@
         <a href="https://github.com/ikkunN700S/Earthquake-DataWeb#%E5%9C%B0%E9%9C%87%E3%83%87%E3%83%BC%E3%82%BF%E3%83%99%E3%83%BC%E3%82%B9web" target="_blank" rel="noopener noreferrer" class="footer-link">利用上の注意事項</a>
         <a href="" id="share-link" class="footer-link">ページを共有する</a>
 
-        <script src="version.js"></script>
-        <script src="sharelink.js"></script>
+        <script src="./js/version.js"></script>
+        <script src="./js/sharelink.js"></script>
     </footer>
 </body>
 </html>
