@@ -4,7 +4,7 @@ document.getElementById('share-link').addEventListener('click', async (e) => {
     // シェアデータ
     const shareData = {
         title: '地震データベースWeb',
-        text: '過去の地震データを検索・閲覧できます',
+        text: '地震データを検索・可視化し、閲覧できるWebアプリです',
         url: window.location.href
     };
 

@@ -17,6 +17,9 @@ let intensityRenderTimeout = null; // タイマー管理変数
 let p2pApiDataList = [];     // API取得した100件のデータを丸ごと記憶
 let p2pOldestTimeMs = null;  // APIが持っている一番古い地震の時刻
 
+// 地震レイヤーの表示/非表示ロジック
+let isEarthquakesVisible = true;
+
 // --- 共通で使う震度の変換表 ---
 const INTENSITY_SCALE_MAP = { 70:'7', 60:'6強', 55:'6弱', 50:'5強', 45:'5弱', 40:'4', 30:'3', 20:'2', 10:'1' };
 const INTENSITY_CLASS_MAP = { 70:'scale-7', 60:'scale-6p', 55:'scale-6m', 50:'scale-5p', 45:'scale-5m', 40:'scale-4', 30:'scale-3', 20:'scale-2', 10:'scale-1' };
@@ -86,7 +89,7 @@ function initMap() {
 
         // まとまる範囲（半径ピクセル数）デフォルトは 80
         // この数値減らすと、まとまらなくなる
-        maxClusterRadius: 40, 
+        maxClusterRadius: 30, 
 
         // 指定したズームレベル（地図の拡大率）以上で強制的にクラスターを解除して個別のピンを表示
         // 目安: 10〜12くらい
@@ -104,40 +107,32 @@ function initMap() {
 }
 
 // 地図とパネルの状態を「完全リセット」する関数
-// （検索時や、全体表示に戻す時に必ず呼ぶ）
+// （検索時や、全体表示に戻す時）
 function forceResetMapState() {
-    // 地震非表示の際にクリックされた場合再表示
-    ensureEarthquakesVisible();
-
-    // ピンを戻す
+    if (typeof intensityRenderTimeout !== 'undefined' && intensityRenderTimeout) {
+        clearTimeout(intensityRenderTimeout);
+    }
     if (typeof intensityClusterGroup !== 'undefined') {
-        intensityClusterGroup.clearLayers(); // 震度ピンを消す
+        intensityClusterGroup.clearLayers();
     }
-    if (typeof markerClusterGroup !== 'undefined' && !map.hasLayer(markerClusterGroup)) {
-        map.addLayer(markerClusterGroup); // 背景の青ピンが非表示なら再表示 ▼
+    
+    // トグルがON（isEarthquakesVisibleがtrue）の時だけ青ピンを復活させる
+    if (typeof markerClusterGroup !== 'undefined' && !map.hasLayer(markerClusterGroup) && isEarthquakesVisible) {
+        map.addLayer(markerClusterGroup);
     }
 
+    // 「描画パニック」を回避する順序でピンを戻す
     if (typeof currentSelectedMarker !== 'undefined' && currentSelectedMarker) {
-        
-        // ① 先にマップから外す（画面上から消すことで、ブラウザのパニックを防ぐ）
         if (map.hasLayer(currentSelectedMarker)) {
-            map.removeLayer(currentSelectedMarker);
+            map.removeLayer(currentSelectedMarker); 
         }
-
-        // ② 画面外にいる間に、こっそり青色に着替えさせる
-        // （defaultMarkerIcon ではなく、ピン自身が記憶している青色を使う）
         if (currentSelectedMarker.originalIcon) {
-            currentSelectedMarker.setIcon(currentSelectedMarker.originalIcon);
+            currentSelectedMarker.setIcon(currentSelectedMarker.originalIcon); 
         } else if (typeof defaultMarkerIcon !== 'undefined' && defaultMarkerIcon) {
-            // 万が一記憶していなかった場合の予備
             currentSelectedMarker.setIcon(defaultMarkerIcon);
         }
-        
         currentSelectedMarker.setZIndexOffset(0);
-        
-        // ③ 青色に戻った状態で、クラスター管理に戻す
-        markerClusterGroup.addLayer(currentSelectedMarker);
-
+        markerClusterGroup.addLayer(currentSelectedMarker); 
         currentSelectedMarker = null;
     }
 
@@ -148,39 +143,12 @@ function forceResetMapState() {
 }
 
 function resetSelection() {
-    intensityClusterGroup.clearLayers(); // 震度ピンを消す
-    
-    // 背景の青ピンが非表示なら再表示 ▼
-    if (!map.hasLayer(markerClusterGroup)) {
-        map.addLayer(markerClusterGroup);
+    if (typeof forceResetMapState === 'function') {
+        forceResetMapState();
     }
 
-    if (typeof currentSelectedMarker !== 'undefined' && currentSelectedMarker) {
-        
-        // ① 先にマップから外す（画面上から消すことで、ブラウザのパニックを防ぐ）
-        if (map.hasLayer(currentSelectedMarker)) {
-            map.removeLayer(currentSelectedMarker);
-        }
-
-        // ② 画面外にいる間に、こっそり青色に着替えさせる
-        // （defaultMarkerIcon ではなく、ピン自身が記憶している青色を使う）
-        if (currentSelectedMarker.originalIcon) {
-            currentSelectedMarker.setIcon(currentSelectedMarker.originalIcon);
-        } else if (typeof defaultMarkerIcon !== 'undefined' && defaultMarkerIcon) {
-            // 万が一記憶していなかった場合の予備
-            currentSelectedMarker.setIcon(defaultMarkerIcon);
-        }
-        
-        currentSelectedMarker.setZIndexOffset(0);
-        
-        // ③ 青色に戻った状態で、クラスター管理に戻す
-        markerClusterGroup.addLayer(currentSelectedMarker);
-
-        currentSelectedMarker = null;
-    }
-
-    // 2. パネルを「現在検索で絞り込まれている中の最新10件」に戻す
     if (currentDataList.length > 0) {
+        // 直近20件を表示させる
         showDetail(currentDataList.slice(0, 20));
     } else {
         document.getElementById('details').innerHTML = ''; // 0件の場合は空にする
@@ -365,6 +333,11 @@ document.getElementById('btn-zoom-reset').addEventListener('click', () => {
 
 // 表示の更新処理（クラスタリング対応）
 function updateDisplay(dataList, message) {
+    // 検索やデータ更新を実行したときは確実に地震レイヤーをON
+    if (typeof ensureEarthquakesVisible === 'function') {
+        ensureEarthquakesVisible();
+    }
+
     // リセット処理
     forceResetMapState();
     
@@ -419,10 +392,12 @@ function updateDisplay(dataList, message) {
 // マーカーを選択状態にする共通関数
 function selectMarker(timeMs, data, fromPanel = false) {
     const marker = markerMap[timeMs];
-    if (!marker) return;
+    if (!marker || currentSelectedMarker === marker) return;
 
-    // すでに選択中のマーカーを押した場合は何もしない
-    if (currentSelectedMarker === marker) return;
+    // リストから地震を選んだ時は地震レイヤーをON
+    if (typeof ensureEarthquakesVisible === 'function') {
+        ensureEarthquakesVisible();
+    }
 
     if (!marker.originalIcon) {
         marker.originalIcon = marker.getIcon(); // 元の青アイコンを自分に記憶させる
@@ -791,9 +766,6 @@ async function initializeApp() {
     await loadStationData(); // 先にJSONを読み込む
     await prefetchApiData(); // 次にP2P地震履歴を読み込む
 }
-
-// 地震レイヤーの表示/非表示ロジック
-let isEarthquakesVisible = true;
 
 document.addEventListener('DOMContentLoaded', () => {
     const eqToggleBtn = document.getElementById('toggle-earthquake-btn');
