@@ -680,8 +680,10 @@ function drawIntensityMarkersOnMap(points) {
 
         if (coords) {
             const scaleStr = INTENSITY_SCALE_MAP[point.scale];
-            const cssClass = INTENSITY_CLASS_MAP[point.scale];
+            const cssClass = INTENSITY_CLASS_MAP[point.scale] || 'intensity-default';
 
+            if (!scaleStr) return;
+            
             const intensityIcon = L.divIcon({
                 className: 'custom-div-icon',
                 html: `<div class="intensity-marker ${cssClass}">${scaleStr.replace('強','+').replace('弱','-')}</div>`,
