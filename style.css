@@ -514,20 +514,28 @@ main {
     margin-bottom: 12px;
 }
 
-.realtime-notification-container::-webkit-scrollbar,
-.realtime-popup::-webkit-scrollbar {
+/* スクロールバーのデザイン */
+.realtime-notification-container::-webkit-scrollbar {
+    display: none; /* 見た目を消す */
+}
+/* 一部のブラウザ向け */
+.realtime-notification-container {
+    scrollbar-width: none; 
+}
+
+.realtime-popup::-webkit-scrollbar, 
+#info-panel::-webkit-scrollbar {
     width: 6px;
 }
 
-.realtime-notification-container::-webkit-scrollbar-track,
-.realtime-popup::-webkit-scrollbar-track {
+.realtime-popup::-webkit-scrollbar-track, 
+#info-panel::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.realtime-notification-container::-webkit-scrollbar-thumb,
-.realtime-popup::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    /* 背景が暗いポップアップに合う半透明の白 */
+.realtime-popup::-webkit-scrollbar-thumb, 
+#info-panel::-webkit-scrollbar-thumb {
+    background: rgba(120, 120, 120, 0.3);
     border-radius: 4px;
 }
 
