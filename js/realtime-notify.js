@@ -16,6 +16,23 @@ function connectRealtimeAPI() {
         // 551: 地震情報（発生直後）
         if (data.code === 551 && data.earthquake) {
             handleEarthquakeEvent(data.earthquake);
+
+            // 最新の地震の震度データをリストに追加して保持
+            if (typeof p2pApiDataList !== 'undefined') {
+                // REST APIが返すデータ構造と同じdataを先頭に追加
+                p2pApiDataList.unshift(data);
+                
+                // 配列100件を維持
+                if (p2pApiDataList.length > 100) {
+                    p2pApiDataList.pop();
+                }
+
+                // リスト末尾の時刻を取得し更新
+                const oldestApi = p2pApiDataList[p2pApiDataList.length - 1];
+                if (oldestApi && oldestApi.earthquake && typeof p2pOldestTimeMs !== 'undefined') {
+                    p2pOldestTimeMs = new Date(oldestApi.earthquake.time).getTime() - 300000;
+                }
+            }
         }
         // 556: 緊急地震速報（EEW） - さらに速い警報
         else if (data.code === 556 && data.eew && !data.eew.isCancel) {
