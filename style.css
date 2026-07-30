@@ -483,9 +483,8 @@ main {
     transform: translateX(-50%);
     z-index: 9999;
     /* 地図や他の要素より常に最前面 */
-    display: flex;
+    display: block;
     flex-direction: column;
-    gap: 12px;
     pointer-events: none;
     /* 背景の地図操作の邪魔をしない */
     width: 90%;
@@ -508,6 +507,28 @@ main {
     /* ふわっと降りてくる */
     position: relative;
     backdrop-filter: blur(4px);
+    max-height: 50vh;
+    overflow-y: auto;
+    height: auto;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+}
+
+.realtime-notification-container::-webkit-scrollbar,
+.realtime-popup::-webkit-scrollbar {
+    width: 6px;
+}
+
+.realtime-notification-container::-webkit-scrollbar-track,
+.realtime-popup::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.realtime-notification-container::-webkit-scrollbar-thumb,
+.realtime-popup::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    /* 背景が暗いポップアップに合う半透明の白 */
+    border-radius: 4px;
 }
 
 /* 震度に応じた枠線の色変化 */
@@ -527,10 +548,11 @@ main {
 }
 
 /* 津波・緊急用ポップアップ */
-.realtime-popup.tsunami-alert { 
-    border-left-color: #0abde3; 
-    background-color: rgba(10, 61, 98, 0.95); 
+.realtime-popup.tsunami-alert {
+    border-left-color: #0abde3;
+    background-color: rgba(10, 61, 98, 0.95);
 }
+
 .tsunami-warning-text {
     color: #ff4757;
     font-weight: bold;
