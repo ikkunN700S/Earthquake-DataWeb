@@ -485,11 +485,13 @@ main {
     /* 地図や他の要素より常に最前面 */
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     pointer-events: none;
     /* 背景の地図操作の邪魔をしない */
     width: 90%;
     max-width: 400px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
 }
 
 .realtime-popup {

@@ -125,13 +125,57 @@ function handleEEWEvent(eew) {
 }
 
 // 津波情報を処理
-function handleTsunamiEvent(tsunami) {
+function handleTsunamiEvent(data) {
+    // もし津波警報が解除された場合（cancelled: true）
+    if (data.cancelled) {
+        showRealtimePopup('🌊 津波情報', '津波警報・注意報はすべて解除されました。', '', 0);
+        return;
+    }
+
+    // エリア情報がない場合はデフォルトメッセージ
+    if (!data.areas || data.areas.length === 0) {
+        const defaultContent = `
+            <strong style="color: #ffda79; font-size: 16px;">津波警報・注意報が発表されました。</strong><br>
+            海岸や川の河口付近から直ちに離れてください！
+        `;
+        showRealtimePopup('🌊 津波情報', defaultContent, 'tsunami-alert', 0);
+        return;
+    }
+
+    // 警報レベルごとに地域を分類・色分け
+    const gradeMap = {
+        'MajorWarning': { label: '大津波警報', color: '#da0eb5', bg: 'rgba(255, 71, 87, 0.2)' },
+        'Warning':      { label: '津波警報', color: '#ff556f', bg: 'rgba(255, 107, 129, 0.2)' },
+        'Advisory':     { label: '津波注意報', color: '#ffa502', bg: 'rgba(255, 165, 2, 0.2)' },
+        'Watch':        { label: '津波予報', color: '#2ed573', bg: 'rgba(46, 213, 115, 0.2)' }
+    };
+
+    let areaHtml = '<div style="margin-top: 10px; font-size: 13px;">';
+
+    data.areas.forEach(area => {
+        const gradeInfo = gradeMap[area.grade] || { label: '不明', color: '#fff', bg: 'transparent' };
+        // immediate（すぐに津波が来るか）が true の場合は強調
+        const immediateMark = area.immediate ? '<span style="color:#ff4757; font-weight:bold;">[到達中]</span> ' : '';
+        
+        areaHtml += `
+            <div style="margin-bottom: 4px; padding: 4px; background: ${gradeInfo.bg}; border-left: 3px solid ${gradeInfo.color};">
+                <strong style="color: ${gradeInfo.color}; display: inline-block; width: 80px;">${gradeInfo.label}</strong>
+                ${immediateMark}${area.name}
+            </div>
+        `;
+    });
+    areaHtml += '</div>';
+
     const content = `
-        <strong style="color: #ffda79; font-size: 16px;">津波警報・注意報が発表されました。</strong><br>
         海岸や川の河口付近から直ちに離れてください！<br>
-        <span style="font-size: 12px; color: #ced6e0;">※詳細はテレビやラジオ、気象庁HPをご確認ください。</span>
+        ${areaHtml}
+        <span style="font-size: 11px; color: #ced6e0; display: block; margin-top: 8px;">
+            発表: ${data.issue.source} (${data.time.replace(/:\d{2}$/, '')})
+        </span>
     `;
-    showRealtimePopup('🌊 津波情報', content, 'tsunami-alert', 0);
+
+    // 0を指定して、手動で閉じるまで消さない
+    showRealtimePopup('🌊 津波警報・注意報', content, 'tsunami-alert', 0);
 }
 
 // ページ読み込み時にセットアップ
