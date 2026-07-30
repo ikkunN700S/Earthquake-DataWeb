@@ -94,10 +94,18 @@ function handleEarthquakeEvent(eq) {
     
     // スケール変換
     const scaleMap = { 70:'7', 60:'6強', 55:'6弱', 50:'5強', 45:'5弱', 40:'4', 30:'3', 20:'2', 10:'1' };
-    const scaleStr = scaleMap[scaleNum] || (scaleNum === -1 ? '観測なし' : '調査中');
+    const scaleStr = scaleMap[scaleNum] || (scaleNum === -1 ? '調査中' : '不明');
     
     const magnitude = eq.hypocenter.magnitude !== -1 ? `M${eq.hypocenter.magnitude.toFixed(1)}` : "不明";
     
+    // 深さ
+    let depthStr = "不明";
+    if (eq.hypocenter.depth === 0) {
+        depthStr = "ごく浅い";
+    } else if (eq.hypocenter.depth > 0) {
+        depthStr = `約${eq.hypocenter.depth}km`;
+    }
+
     // 色分けの判定
     let typeClass = '';
     if (scaleNum >= 45) typeClass = 'intensity-high'; // 5弱以上
@@ -115,7 +123,7 @@ function handleEarthquakeEvent(eq) {
 
     const content = `
         <strong>${name}</strong> を震源とする地震がありました。<br>
-        最大震度: <strong style="font-size: 18px;">${scaleStr}</strong> (規模: ${magnitude})<br>
+        最大震度: <strong style="font-size: 18px;">${scaleStr}</strong> (規模: ${magnitude}， 深さ: ${depthStr})<br>
         ${tsunamiInfo}
         <span style="font-size: 11px; color: #a4b0be; margin-top: 4px; display: block;">発生時刻: ${time}</span>
     `;
