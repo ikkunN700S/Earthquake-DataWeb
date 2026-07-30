@@ -49,14 +49,16 @@ header .attention {
     border-radius: 50%;
     width: 10px;
     height: 10px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 /* 2つのトグルを並べるためのコンテナ */
 .map-toggle-container {
     display: flex;
-    gap: 15px;          /* トグル同士の隙間 */
-    flex-wrap: wrap;    /* スマホなどで狭い場合は折り返す */
+    gap: 15px;
+    /* トグル同士の隙間 */
+    flex-wrap: wrap;
+    /* スマホなどで狭い場合は折り返す */
     justify-content: flex-end;
     align-items: center;
 
@@ -77,7 +79,8 @@ header .attention {
 
 /* スイッチの四角い枠 */
 .station-toggle-label input {
-    display: none; /* デフォルトのチェックボックスを隠す */
+    display: none;
+    /* デフォルトのチェックボックスを隠す */
 }
 
 .station-toggle-slider {
@@ -103,16 +106,17 @@ header .attention {
 }
 
 /* チェックされた時の状態 */
-.station-toggle-label input:checked + .station-toggle-slider {
-    background-color: #2f333e; /* 緑色に */
+.station-toggle-label input:checked+.station-toggle-slider {
+    background-color: #2f333e;
+    /* 緑色に */
 }
 
-.station-toggle-label input:checked + .station-toggle-slider::before {
+.station-toggle-label input:checked+.station-toggle-slider::before {
     transform: translateX(16px);
 }
 
-#toggle-earthquake-btn:checked + .earthquake-slider {
-    background-color: #2f333e; 
+#toggle-earthquake-btn:checked+.earthquake-slider {
+    background-color: #2f333e;
 }
 
 /* 検索バーのスタイル */
@@ -157,8 +161,10 @@ button:hover {
 
 .sub-buttons {
     display: flex;
-    gap: 10px;           /* ボタン同士の隙間 */
-    margin-left: auto;   /* 右寄せ */
+    gap: 10px;
+    /* ボタン同士の隙間 */
+    margin-left: auto;
+    /* 右寄せ */
 }
 
 /* サブボタン（リセット・更新）のデザイン */
@@ -186,7 +192,7 @@ button:hover {
     color: black;
 }
 
-#btn-update{
+#btn-update {
     background-color: #7f8c8d;
 }
 
@@ -345,19 +351,50 @@ main {
     font-weight: bold;
     font-size: 14px;
     color: #333;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 }
 
 /* 震度ごとの背景色（気象庁の配色に準拠） */
-.scale-7  { background-color: #600239; color: white; }
-.scale-6p { background-color: #8a0557; color: white; }
-.scale-6m { background-color: #b40671; color: white; }
-.scale-5p { background-color: #a50021; color: white; }
-.scale-5m { background-color: #ff3300; color: white; }
-.scale-4  { background-color: #ffb100; }
-.scale-3  { background-color: #fae600; }
-.scale-2  { background-color: #72d278; }
-.scale-1  { background-color: #8bafd6; }
+.scale-7 {
+    background-color: #600239;
+    color: white;
+}
+
+.scale-6p {
+    background-color: #8a0557;
+    color: white;
+}
+
+.scale-6m {
+    background-color: #b40671;
+    color: white;
+}
+
+.scale-5p {
+    background-color: #a50021;
+    color: white;
+}
+
+.scale-5m {
+    background-color: #ff3300;
+    color: white;
+}
+
+.scale-4 {
+    background-color: #ffb100;
+}
+
+.scale-3 {
+    background-color: #fae600;
+}
+
+.scale-2 {
+    background-color: #72d278;
+}
+
+.scale-1 {
+    background-color: #8bafd6;
+}
 
 .intensity-btn {
     display: block;
@@ -375,7 +412,8 @@ main {
 }
 
 .intensity-btn:hover {
-    background-color: #eccc68; /* 少し目立つ色に */
+    background-color: #eccc68;
+    /* 少し目立つ色に */
 }
 
 .intensity-btn:disabled {
@@ -387,7 +425,8 @@ main {
 }
 
 .intensity-btn:disabled:hover {
-    background-color: #f1f2f6; /* ホバーしても色を変えない */
+    background-color: #f1f2f6;
+    /* ホバーしても色を変えない */
 }
 
 .intensity-details-container {
@@ -395,7 +434,8 @@ main {
     font-size: 0.85rem;
     border-top: 1px dashed #ced6e0;
     padding-top: 10px;
-    display: none; /* 最初は隠しておく */
+    display: none;
+    /* 最初は隠しておく */
 }
 
 /* 震度ごとのグループ */
@@ -426,22 +466,125 @@ main {
 }
 
 @keyframes blink {
-    from { opacity: 1; }
-    to { opacity: 0.4; }
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0.4;
+    }
+}
+
+/* リアルタイムポップアップ */
+.realtime-notification-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    /* 地図や他の要素より常に最前面 */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+    /* 背景の地図操作の邪魔をしない */
+    width: 90%;
+    max-width: 400px;
+}
+
+.realtime-popup {
+    background-color: rgba(47, 53, 66, 0.95);
+    color: #ffffff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    border-left: 6px solid #2ed573;
+    /* デフォルト（震度低）は緑 */
+    pointer-events: auto;
+    /* ここだけはクリック可能にする */
+    animation: slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    /* ふわっと降りてくる */
+    position: relative;
+    backdrop-filter: blur(4px);
+}
+
+/* 震度に応じた枠線の色変化 */
+.realtime-popup.intensity-high {
+    border-left-color: #ff4757;
+}
+
+/* 震度5弱以上は赤 */
+.realtime-popup.intensity-mid {
+    border-left-color: #ffa502;
+}
+
+/* 震度3〜4はオレンジ */
+.realtime-popup.eew-alert {
+    border-left-color: #ff3838;
+    background-color: rgba(194, 54, 22, 0.95);
+}
+
+/* 緊急地震速報 */
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.popup-close-btn {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    cursor: pointer;
+    color: #a4b0be;
+    font-size: 14px;
+}
+
+.popup-close-btn:hover {
+    color: #ffffff;
+}
+
+.realtime-popup-title {
+    font-size: 12px;
+    font-weight: bold;
+    color: #ced6e0;
+    margin-bottom: 8px;
+}
+
+.realtime-popup-content {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.realtime-popup-content strong {
+    font-size: 16px;
+    color: #ffda79;
 }
 
 /* フッター全体のコンテナ設定 */
 footer {
     background-color: #2c3e50;
-    padding: 6px 10px; /* 上下の幅を極限まで小さく */
+    padding: 6px 10px;
+    /* 上下の幅を極限まで小さく */
     font-size: 11px;
     color: #999;
-    
+
     display: flex;
-    flex-wrap: wrap;         /* 幅が足りなくなったら自動で折り返す */
-    justify-content: center; /* 全体を中央に寄せる */
-    align-items: center;     /* 縦方向のズレを揃える */
-    gap: 15px;               /* 並べた要素と要素の間の隙間 */
+    flex-wrap: wrap;
+    /* 幅が足りなくなったら自動で折り返す */
+    justify-content: center;
+    /* 全体を中央に寄せる */
+    align-items: center;
+    /* 縦方向のズレを揃える */
+    gap: 15px;
+    /* 並べた要素と要素の間の隙間 */
 }
 
 /* pタグの不要な余白を消去 */
@@ -457,19 +600,25 @@ footer #site-version {
 /* リンク要素のデザイン */
 footer .footer-link {
     color: #aaa;
-    text-decoration: none; /* リンクの下線を消す */
+    text-decoration: none;
+    /* リンクの下線を消す */
 }
 
 /* リンクにマウスを乗せた際の動き */
 footer .footer-link:hover {
     color: #fff;
-    text-decoration: underline; /* マウスホバー時だけ下線を出す */
+    text-decoration: underline;
+    /* マウスホバー時だけ下線を出す */
 }
 
 @media (max-width: 768px) {
-    html, body {
-        height: 100dvh; /* 表示領域に高さを一致させる */
+
+    html,
+    body {
+        height: 100dvh;
+        /* 表示領域に高さを一致させる */
         margin: 0;
-        overflow: hidden; /* スクロール禁止 */
+        overflow: hidden;
+        /* スクロール禁止 */
     }
 }
