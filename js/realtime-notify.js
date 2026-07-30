@@ -64,7 +64,7 @@ function showRealtimePopup(title, content, typeClass = '') {
 function handleEarthquakeEvent(eq) {
     if (!eq.hypocenter || !eq.hypocenter.name) return;
     
-    const time = eq.time;
+    const time = eq.time ? eq.time.replace(/:\d{2}$/, '') : '不明';
     const name = eq.hypocenter.name;
     const scaleNum = eq.maxScale;
     
@@ -85,7 +85,7 @@ function handleEarthquakeEvent(eq) {
         <span style="font-size: 11px; color: #a4b0be; margin-top: 4px; display: block;">発生時刻: ${time}</span>
     `;
     
-    showRealtimePopup('🚨 地震情報 (速報)', content, typeClass);
+    showRealtimePopup('地震情報 (速報)', content, typeClass);
 }
 
 // 緊急地震速報（EEW）を処理
