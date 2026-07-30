@@ -484,7 +484,6 @@ main {
     z-index: 9999;
     /* 地図や他の要素より常に最前面 */
     display: block;
-    flex-direction: column;
     pointer-events: none;
     /* 背景の地図操作の邪魔をしない */
     width: 90%;
@@ -498,7 +497,6 @@ main {
     color: #ffffff;
     padding: 15px;
     border-radius: 8px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
     border-left: 6px solid #2ed573;
     /* デフォルト（震度低）は緑 */
     pointer-events: auto;
