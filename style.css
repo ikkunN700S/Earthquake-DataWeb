@@ -524,6 +524,21 @@ main {
     background-color: rgba(194, 54, 22, 0.95);
 }
 
+/* 津波・緊急用ポップアップ */
+.realtime-popup.tsunami-alert { 
+    border-left-color: #0abde3; 
+    background-color: rgba(10, 61, 98, 0.95); 
+}
+.tsunami-warning-text {
+    color: #ff4757;
+    font-weight: bold;
+    display: inline-block;
+    margin-top: 5px;
+    background-color: rgba(255, 71, 87, 0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
 /* 緊急地震速報 */
 
 @keyframes slideDown {

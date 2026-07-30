@@ -21,6 +21,10 @@ function connectRealtimeAPI() {
         else if (data.code === 556 && data.eew && !data.eew.isCancel) {
             handleEEWEvent(data.eew);
         }
+        // 552: 津波情報
+        else if (data.code === 552 && data.tsunami) {
+            handleTsunamiEvent(data.tsunami);
+        }
     };
 
     ws.onclose = () => {
@@ -70,7 +74,7 @@ function handleEarthquakeEvent(eq) {
     
     // スケール変換
     const scaleMap = { 70:'7', 60:'6強', 55:'6弱', 50:'5強', 45:'5弱', 40:'4', 30:'3', 20:'2', 10:'1' };
-    const scaleStr = scaleMap[scaleNum] || '調査中';
+    const scaleStr = scaleMap[scaleNum] || (scaleNum === -1 ? '観測なし' : '調査中');
     
     const magnitude = eq.hypocenter.magnitude !== -1 ? `M${eq.hypocenter.magnitude.toFixed(1)}` : "不明";
     
@@ -79,6 +83,16 @@ function handleEarthquakeEvent(eq) {
     if (scaleNum >= 45) typeClass = 'intensity-high'; // 5弱以上
     else if (scaleNum >= 30) typeClass = 'intensity-mid'; // 3〜4
     
+    // 津波情報の判定
+    let tsunamiInfo = '';
+    switch (eq.domesticTsunami) {
+        case 'Warning': tsunamiInfo = '<div class="tsunami-warning-text">⚠️ 津波警報等発表中</div>'; break;
+        case 'Checking': tsunamiInfo = '<div style="color: #ffa502; margin-top: 5px;">⚠️ 津波の有無を調査中</div>'; break;
+        case 'NonDestructive': tsunamiInfo = '<div style="color: #2ed573; margin-top: 5px;">若干の海面変動あり（被害なし）</div>'; break;
+        case 'None': tsunamiInfo = '<div style="color: #a4b0be; margin-top: 5px;">津波の心配なし</div>'; break;
+        case 'Unknown': tsunamiInfo = '<div style="color: #a4b0be; margin-top: 5px;">津波の影響は不明</div>'; break;
+    }
+
     const content = `
         <strong>${name}</strong> を震源とする地震がありました。<br>
         最大震度: <strong style="font-size: 18px;">${scaleStr}</strong> (規模: ${magnitude})<br>
@@ -98,6 +112,16 @@ function handleEEWEvent(eew) {
     `;
     
     showRealtimePopup('⚠️ 緊急地震速報 (警報)', content, 'eew-alert');
+}
+
+// 津波情報を処理
+function handleTsunamiEvent(tsunami) {
+    const content = `
+        <strong style="color: #ffda79; font-size: 16px;">津波警報・注意報が発表されました。</strong><br>
+        海岸や川の河口付近から直ちに離れてください！<br>
+        <span style="font-size: 12px; color: #ced6e0;">※詳細はテレビやラジオ、気象庁HPをご確認ください。</span>
+    `;
+    showRealtimePopup('🌊 津波情報', content, 'tsunami-alert');
 }
 
 // ページ読み込み時にセットアップ
