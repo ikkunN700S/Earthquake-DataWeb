@@ -38,7 +38,7 @@ function connectRealtimeAPI() {
 }
 
 // 画面上にポップアップを生成する関数
-function showRealtimePopup(title, content, typeClass = '') {
+function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
     const container = document.getElementById('realtime-notification-container');
     if (!container) return;
 
@@ -54,14 +54,17 @@ function showRealtimePopup(title, content, typeClass = '') {
     // 新しい通知を一番上に追加
     container.prepend(popup);
 
-    // 15秒後に自動でふわっと消す
-    setTimeout(() => {
-        if (popup.parentElement) {
-            popup.style.opacity = '0';
-            popup.style.transition = 'opacity 0.5s';
-            setTimeout(() => popup.remove(), 500);
-        }
-    }, 15000);
+    // durationが0より大きい場合はタイマーセット
+    if(duration > 0) {
+        // 60秒後に自動でふわっと消す
+        setTimeout(() => {
+            if (popup.parentElement) {
+                popup.style.opacity = '0';
+                popup.style.transition = 'opacity 0.5s';
+                setTimeout(() => popup.remove(), 500);
+            }
+        }, duration);
+    }
 }
 
 // 地震情報を処理
@@ -96,10 +99,17 @@ function handleEarthquakeEvent(eq) {
     const content = `
         <strong>${name}</strong> を震源とする地震がありました。<br>
         最大震度: <strong style="font-size: 18px;">${scaleStr}</strong> (規模: ${magnitude})<br>
+        ${tsunamiInfo}
         <span style="font-size: 11px; color: #a4b0be; margin-top: 4px; display: block;">発生時刻: ${time}</span>
     `;
     
-    showRealtimePopup('地震情報 (速報)', content, typeClass);
+    // 震度5弱以上または津波警報発表なら自動で消さない
+    let displayTime = 60000;
+    if (scaleNum >= 45 || eq.domesticTsunami === 'Warning') {
+        displayTime = 0;
+    }
+
+    showRealtimePopup('地震情報 (速報)', content, typeClass, displayTime);
 }
 
 // 緊急地震速報（EEW）を処理
@@ -111,7 +121,7 @@ function handleEEWEvent(eew) {
         強い揺れに警戒してください！
     `;
     
-    showRealtimePopup('⚠️ 緊急地震速報 (警報)', content, 'eew-alert');
+    showRealtimePopup('⚠️ 緊急地震速報 (警報)', content, 'eew-alert', 0);
 }
 
 // 津波情報を処理
@@ -121,7 +131,7 @@ function handleTsunamiEvent(tsunami) {
         海岸や川の河口付近から直ちに離れてください！<br>
         <span style="font-size: 12px; color: #ced6e0;">※詳細はテレビやラジオ、気象庁HPをご確認ください。</span>
     `;
-    showRealtimePopup('🌊 津波情報', content, 'tsunami-alert');
+    showRealtimePopup('🌊 津波情報', content, 'tsunami-alert', 0);
 }
 
 // ページ読み込み時にセットアップ
