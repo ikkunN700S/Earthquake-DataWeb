@@ -21,6 +21,10 @@ function connectRealtimeAPI() {
         else if (data.code === 556 && data.eew && !data.eew.isCancel) {
             handleEEWEvent(data.eew);
         }
+        // 552: 津波情報
+        else if (data.code === 552 && data.tsunami) {
+            handleTsunamiEvent(data.tsunami);
+        }
     };
 
     ws.onclose = () => {
@@ -34,7 +38,7 @@ function connectRealtimeAPI() {
 }
 
 // 画面上にポップアップを生成する関数
-function showRealtimePopup(title, content, typeClass = '') {
+function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
     const container = document.getElementById('realtime-notification-container');
     if (!container) return;
 
@@ -50,14 +54,17 @@ function showRealtimePopup(title, content, typeClass = '') {
     // 新しい通知を一番上に追加
     container.prepend(popup);
 
-    // 15秒後に自動でふわっと消す
-    setTimeout(() => {
-        if (popup.parentElement) {
-            popup.style.opacity = '0';
-            popup.style.transition = 'opacity 0.5s';
-            setTimeout(() => popup.remove(), 500);
-        }
-    }, 15000);
+    // durationが0より大きい場合はタイマーセット
+    if(duration > 0) {
+        // 60秒後に自動でふわっと消す
+        setTimeout(() => {
+            if (popup.parentElement) {
+                popup.style.opacity = '0';
+                popup.style.transition = 'opacity 0.5s';
+                setTimeout(() => popup.remove(), 500);
+            }
+        }, duration);
+    }
 }
 
 // 地震情報を処理
@@ -70,7 +77,7 @@ function handleEarthquakeEvent(eq) {
     
     // スケール変換
     const scaleMap = { 70:'7', 60:'6強', 55:'6弱', 50:'5強', 45:'5弱', 40:'4', 30:'3', 20:'2', 10:'1' };
-    const scaleStr = scaleMap[scaleNum] || '調査中';
+    const scaleStr = scaleMap[scaleNum] || (scaleNum === -1 ? '観測なし' : '調査中');
     
     const magnitude = eq.hypocenter.magnitude !== -1 ? `M${eq.hypocenter.magnitude.toFixed(1)}` : "不明";
     
@@ -79,13 +86,30 @@ function handleEarthquakeEvent(eq) {
     if (scaleNum >= 45) typeClass = 'intensity-high'; // 5弱以上
     else if (scaleNum >= 30) typeClass = 'intensity-mid'; // 3〜4
     
+    // 津波情報の判定
+    let tsunamiInfo = '';
+    switch (eq.domesticTsunami) {
+        case 'Warning': tsunamiInfo = '<div class="tsunami-warning-text">⚠️ 津波警報等発表中</div>'; break;
+        case 'Checking': tsunamiInfo = '<div style="color: #ffa502; margin-top: 5px;">⚠️ 津波の有無を調査中</div>'; break;
+        case 'NonDestructive': tsunamiInfo = '<div style="color: #2ed573; margin-top: 5px;">若干の海面変動あり（被害なし）</div>'; break;
+        case 'None': tsunamiInfo = '<div style="color: #a4b0be; margin-top: 5px;">津波の心配なし</div>'; break;
+        case 'Unknown': tsunamiInfo = '<div style="color: #a4b0be; margin-top: 5px;">津波の影響は不明</div>'; break;
+    }
+
     const content = `
         <strong>${name}</strong> を震源とする地震がありました。<br>
         最大震度: <strong style="font-size: 18px;">${scaleStr}</strong> (規模: ${magnitude})<br>
+        ${tsunamiInfo}
         <span style="font-size: 11px; color: #a4b0be; margin-top: 4px; display: block;">発生時刻: ${time}</span>
     `;
     
-    showRealtimePopup('地震情報 (速報)', content, typeClass);
+    // 震度5弱以上または津波警報発表なら自動で消さない
+    let displayTime = 60000;
+    if (scaleNum >= 45 || eq.domesticTsunami === 'Warning') {
+        displayTime = 0;
+    }
+
+    showRealtimePopup('地震情報 (速報)', content, typeClass, displayTime);
 }
 
 // 緊急地震速報（EEW）を処理
@@ -97,7 +121,61 @@ function handleEEWEvent(eew) {
         強い揺れに警戒してください！
     `;
     
-    showRealtimePopup('⚠️ 緊急地震速報 (警報)', content, 'eew-alert');
+    showRealtimePopup('⚠️ 緊急地震速報 (警報)', content, 'eew-alert', 0);
+}
+
+// 津波情報を処理
+function handleTsunamiEvent(data) {
+    // もし津波警報が解除された場合（cancelled: true）
+    if (data.cancelled) {
+        showRealtimePopup('🌊 津波情報', '津波警報・注意報はすべて解除されました。', '', 0);
+        return;
+    }
+
+    // エリア情報がない場合はデフォルトメッセージ
+    if (!data.areas || data.areas.length === 0) {
+        const defaultContent = `
+            <strong style="color: #ffda79; font-size: 16px;">津波警報・注意報が発表されました。</strong><br>
+            海岸や川の河口付近から直ちに離れてください！
+        `;
+        showRealtimePopup('🌊 津波情報', defaultContent, 'tsunami-alert', 0);
+        return;
+    }
+
+    // 警報レベルごとに地域を分類・色分け
+    const gradeMap = {
+        'MajorWarning': { label: '大津波警報', color: '#da0eb5', bg: 'rgba(255, 71, 87, 0.2)' },
+        'Warning':      { label: '津波警報', color: '#ff556f', bg: 'rgba(255, 107, 129, 0.2)' },
+        'Advisory':     { label: '津波注意報', color: '#ffa502', bg: 'rgba(255, 165, 2, 0.2)' },
+        'Watch':        { label: '津波予報', color: '#2ed573', bg: 'rgba(46, 213, 115, 0.2)' }
+    };
+
+    let areaHtml = '<div style="margin-top: 10px; font-size: 13px;">';
+
+    data.areas.forEach(area => {
+        const gradeInfo = gradeMap[area.grade] || { label: '不明', color: '#fff', bg: 'transparent' };
+        // immediate（すぐに津波が来るか）が true の場合は強調
+        const immediateMark = area.immediate ? '<span style="color:#ff4757; font-weight:bold;">[到達中]</span> ' : '';
+        
+        areaHtml += `
+            <div style="margin-bottom: 4px; padding: 4px; background: ${gradeInfo.bg}; border-left: 3px solid ${gradeInfo.color};">
+                <strong style="color: ${gradeInfo.color}; display: inline-block; width: 80px;">${gradeInfo.label}</strong>
+                ${immediateMark}${area.name}
+            </div>
+        `;
+    });
+    areaHtml += '</div>';
+
+    const content = `
+        海岸や川の河口付近から直ちに離れてください！<br>
+        ${areaHtml}
+        <span style="font-size: 11px; color: #ced6e0; display: block; margin-top: 8px;">
+            発表: ${data.issue.source} (${data.time.replace(/:\d{2}$/, '')})
+        </span>
+    `;
+
+    // 0を指定して、手動で閉じるまで消さない
+    showRealtimePopup('🌊 津波警報・注意報', content, 'tsunami-alert', 0);
 }
 
 // ページ読み込み時にセットアップ

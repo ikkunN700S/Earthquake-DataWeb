@@ -483,13 +483,14 @@ main {
     transform: translateX(-50%);
     z-index: 9999;
     /* 地図や他の要素より常に最前面 */
-    display: flex;
+    display: block;
     flex-direction: column;
-    gap: 10px;
     pointer-events: none;
     /* 背景の地図操作の邪魔をしない */
     width: 90%;
     max-width: 400px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
 }
 
 .realtime-popup {
@@ -506,6 +507,36 @@ main {
     /* ふわっと降りてくる */
     position: relative;
     backdrop-filter: blur(4px);
+    max-height: 50vh;
+    overflow-y: auto;
+    height: auto;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+}
+
+/* スクロールバーのデザイン */
+.realtime-notification-container::-webkit-scrollbar {
+    display: none; /* 見た目を消す */
+}
+/* 一部のブラウザ向け */
+.realtime-notification-container {
+    scrollbar-width: none; 
+}
+
+.realtime-popup::-webkit-scrollbar, 
+#info-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.realtime-popup::-webkit-scrollbar-track, 
+#info-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.realtime-popup::-webkit-scrollbar-thumb, 
+#info-panel::-webkit-scrollbar-thumb {
+    background: rgba(120, 120, 120, 0.3);
+    border-radius: 4px;
 }
 
 /* 震度に応じた枠線の色変化 */
@@ -522,6 +553,22 @@ main {
 .realtime-popup.eew-alert {
     border-left-color: #ff3838;
     background-color: rgba(194, 54, 22, 0.95);
+}
+
+/* 津波・緊急用ポップアップ */
+.realtime-popup.tsunami-alert {
+    border-left-color: #0abde3;
+    background-color: rgba(10, 61, 98, 0.95);
+}
+
+.tsunami-warning-text {
+    color: #ff4757;
+    font-weight: bold;
+    display: inline-block;
+    margin-top: 5px;
+    background-color: rgba(255, 71, 87, 0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
 }
 
 /* 緊急地震速報 */
