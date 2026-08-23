@@ -2,12 +2,50 @@
 // リアルタイム地震情報 受信・ポップアップ機能
 // ==========================================
 
+// 再接続の試行回数を記録する変数
+let reconnectAttempts = 0;
+
+// ステータス表示を更新する関数
+function updateWebSocketStatus(state) {
+    let statusEl = document.getElementById('websocket-status-badge');
+    
+    // 要素がなければ作る（画面右上）
+    if (!statusEl) {
+        statusEl = document.createElement('div');
+        statusEl.id = 'websocket-status-badge';
+        // CSSを直接付与
+        statusEl.style.cssText = `
+            position: fixed; top: 20px; right: 20px;
+            padding: 6px 12px; border-radius: 20px;
+            font-size: 12px; font-weight: bold; color: white;
+            z-index: 10000; pointer-events: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            transition: background-color 0.3s;
+        `;
+        document.body.appendChild(statusEl);
+    }
+
+    if (state === 'connected') {
+        statusEl.textContent = '🟢 リアルタイム接続中';
+        statusEl.style.backgroundColor = 'rgba(46, 213, 115, 0.9)'; // 緑
+        reconnectAttempts = 0; // 成功したら試行回数をリセット
+    } else if (state === 'connecting') {
+        statusEl.textContent = '🟡 接続試行中...';
+        statusEl.style.backgroundColor = 'rgba(255, 165, 2, 0.9)'; // オレンジ
+    } else if (state === 'disconnected') {
+        statusEl.textContent = '🔴 接続切断';
+        statusEl.style.backgroundColor = 'rgba(255, 71, 87, 0.9)'; // 赤
+    }
+}
+
 function connectRealtimeAPI() {
+    updateWebSocketStatus('connecting');
     // P2P地震情報の WebSocket API に接続
     const ws = new WebSocket('wss://api.p2pquake.net/v2/ws');
 
     ws.onopen = () => {
         console.log('📶 リアルタイム地震速報サーバーに接続しました');
+        updateWebSocketStatus('connected');
     };
 
     ws.onmessage = (event) => {
@@ -45,8 +83,13 @@ function connectRealtimeAPI() {
     };
 
     ws.onclose = () => {
-        console.warn('⚠️ リアルタイム接続が切断されました。5秒後に再接続します...');
-        setTimeout(connectRealtimeAPI, 5000); // 切れっぱなしを防ぐ自動再接続ロジック
+        updateWebSocketStatus('disconnected');
+
+        const delay = Math.min(5000 * Math.pow(2, reconnectAttempts), 60000);
+        console.warn(`⚠️ 切断されました。${delay / 1000}秒後に再接続します...`);
+        
+        reconnectAttempts++;
+        setTimeout(connectRealtimeAPI, delay);
     };
     
     ws.onerror = (error) => {
