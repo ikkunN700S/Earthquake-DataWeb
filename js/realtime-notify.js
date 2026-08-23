@@ -44,6 +44,23 @@ function updateWebSocketStatus(state) {
 function processIncomingData(data) {
     // すでに処理した情報（同じID）なら何もしない
     if (processedEventIds.has(data.id)) return;
+
+    // 過去のデータなら無視
+    if (typeof p2pApiDataList !== 'undefined' && p2pApiDataList.some(item => item.id === data.id)) {
+        processedEventIds.add(data.id); // 次から弾くために記録だけしておく
+        return;
+    }
+
+    // 5分以上前の情報なら無視
+    if (data.time) {
+        const dataTimeMs = new Date(data.time).getTime();
+        const nowMs = Date.now();
+        // 5分 (300000ミリ秒) 以上前のデータは過去とみなす
+        if (nowMs - dataTimeMs > 300000) {
+            processedEventIds.add(data.id);
+            return;
+        }
+    }
     
     // 新規の情報としてIDを記録
     processedEventIds.add(data.id);
