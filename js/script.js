@@ -155,33 +155,6 @@ function resetSelection() {
     }
 }
 
-function executeSearch() {
-    const locQuery = document.getElementById('search-location').value;
-    const minIntensity = parseFloat(document.getElementById('search-intensity').value);
-    const minMag = parseFloat(document.getElementById('search-mag').value) || 0;
-    
-    const startDateStr = document.getElementById('search-date-start').value;
-    const endDateStr = document.getElementById('search-date-end').value;
-    const startMs = startDateStr ? new Date(startDateStr + "T00:00:00").getTime() : 0;
-    const endMs = endDateStr ? new Date(endDateStr + "T23:59:59").getTime() : Infinity;
-
-    // ★絞り込んだ結果を変数に保存（let filtered ではなく currentDataList に代入）
-    currentDataList = allEarthquakes.filter(eq => {
-        const matchLoc = eq.location.includes(locQuery);
-        const matchInt = eq.intensityLevel >= minIntensity;
-        const matchMag = eq.mag >= minMag;
-        const matchDate = eq.timeMs >= startMs && eq.timeMs <= endMs;
-        
-        return matchLoc && matchInt && matchMag && matchDate;
-    });
-
-    // ピンを再配置
-    updateDisplay(currentDataList, "検索結果");
-
-    // ★検索した直後も「最新10件」を表示させるために呼び出す
-    resetSelection();
-}
-
 // 震度文字列の数値化
 function getIntensityLevel(intensityStr) {
     const scale = { '1': 1, '2': 2, '3': 3, '4': 4, '5-': 4.5, '5+': 5.0, '6-': 5.5, '6+': 6.0, '7': 7 };
@@ -243,13 +216,12 @@ function executeSearch() {
     const minIntensity = parseFloat(document.getElementById('search-intensity').value);
     const minMag = parseFloat(document.getElementById('search-mag').value) || 0;
     
-    // 日付の取得（未入力の場合は極端な日付を入れる）
     const startDateStr = document.getElementById('search-date-start').value;
     const endDateStr = document.getElementById('search-date-end').value;
     const startMs = startDateStr ? new Date(startDateStr + "T00:00:00").getTime() : 0;
     const endMs = endDateStr ? new Date(endDateStr + "T23:59:59").getTime() : Infinity;
 
-    // フィルター処理
+    // ★絞り込んだ結果を変数に保存（let filtered ではなく currentDataList に代入）
     currentDataList = allEarthquakes.filter(eq => {
         const matchLoc = eq.location.includes(locQuery);
         const matchInt = eq.intensityLevel >= minIntensity;
@@ -261,7 +233,8 @@ function executeSearch() {
 
     // ピンを再配置
     updateDisplay(currentDataList, "検索結果");
-    // 検索後の最新10件表示呼び出し
+
+    // ★検索した直後も「最新10件」を表示させるために呼び出す
     resetSelection();
 }
 
@@ -359,7 +332,7 @@ function updateDisplay(dataList, message) {
     // まとめて追加するための配列
     const markersToAdd = [];
 
-    dataList.forEach(data => {
+    dataList.forEach((data, index) => {
         let lat, lon;
         if (data.csvLat && data.csvLon && !isNaN(data.csvLat)) {
             lat = data.csvLat; lon = data.csvLon;
@@ -372,13 +345,13 @@ function updateDisplay(dataList, message) {
             const marker = L.marker([lat, lon]);
 
             // マーカーを管理用オブジェクトに保存
-            markerMap[data.timeMs] = marker;
+            markerMap[index] = marker;
             
             // クリックした時の処理
             marker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e); 
 
-                selectMarker(data.timeMs, data, false);
+                selectMarker(index, data, false);
             });
             
             markersToAdd.push(marker);
@@ -390,8 +363,8 @@ function updateDisplay(dataList, message) {
 }
 
 // マーカーを選択状態にする共通関数
-function selectMarker(timeMs, data, fromPanel = false) {
-    const marker = markerMap[timeMs];
+function selectMarker(index, data, fromPanel = false) {
+    const marker = markerMap[index];
     if (!marker || currentSelectedMarker === marker) return;
 
     // リストから地震を選んだ時は地震レイヤーをON
@@ -439,10 +412,10 @@ function selectMarker(timeMs, data, fromPanel = false) {
 }
 
 // パネルのカードクリック時に呼ばれる関数
-function handleCardClick(timeMs) {
-    const data = currentDataList.find(eq => eq.timeMs === timeMs);
+function handleCardClick(index) {
+    const data = currentDataList[index];
     if (data) {
-        selectMarker(timeMs, data, true);
+        selectMarker(index, data, true);
     }
 }
 
@@ -470,7 +443,7 @@ function showDetail(data) {
 
     const titleHtml = data.length > 1 ? '<h3 style="font-size:0.9rem; color:#666;">直近の地震情報</h3>' : '';
 
-    const cardsHtml = data.map(data => {
+    const cardsHtml = data.map((data, index) => {
         // ここで震度に基づいたクラスを取得
         const intensityClass = getIntensityClass(data.rawIntensity);
 
@@ -489,10 +462,10 @@ function showDetail(data) {
         // 範囲外なら disabled 属性付きのグレーアウトボタンにする
         const buttonHtml = isOutOfRange
             ? `<button class="intensity-btn" disabled>⚠️ API提供期間外（古いデータ）</button>`
-            : `<button class="intensity-btn" onclick="showIntensityData(event, ${data.timeMs})">▼ 各地の震度詳細を表示</button>`;
+            : `<button class="intensity-btn" onclick="showIntensityData(event, ${index})">▼ 各地の震度詳細を表示</button>`;
             
         return `
-            <div class="eq-card" onclick="handleCardClick(${data.timeMs})" style="cursor: pointer;">
+            <div class="eq-card" onclick="handleCardClick(${index})" style="cursor: pointer;">
                 <div class="eq-card-header ${intensityClass}">
                     <span class="eq-intensity">震度 ${displayIntensity}</span>
                     <span class="eq-location">${data.location}</span>
@@ -519,7 +492,7 @@ function showDetail(data) {
                         </a>
                     </div>
                     ${buttonHtml}
-                    <div id="intensity-box-${data.timeMs}" class="intensity-details-container"></div>
+                    <div id="intensity-box-${index}" class="intensity-details-container"></div>
                 </div>
             </div>
         `;
@@ -535,20 +508,20 @@ function showDetail(data) {
 }
 
 // 観測点の震度を表示（事前取得済みのデータから検索）
-function showIntensityData(event, timeMs) {
+function showIntensityData(event, index) {
     event.stopPropagation();
 
     // ★ 1. まず表示中のリストから、対象の地震データを取得する（処理を一番上に移動）
-    const targetEq = currentDataList.find(eq => eq.timeMs === timeMs);
+    const targetEq = currentDataList[index];
     if (!targetEq) return;
 
     // ★ 2. もしこの地震がまだ選択（赤いピン）されていなければ、自動的に選択する
-    if (!currentSelectedMarker || currentSelectedMarker !== markerMap[timeMs]) {
+    if (!currentSelectedMarker || currentSelectedMarker !== markerMap[index]) {
         // 3番目の引数(fromPanel)を true にして、リストの再描画を防ぐ
-        selectMarker(timeMs, targetEq, true);
+        selectMarker(index, targetEq, true);
     }
 
-    const box = document.getElementById(`intensity-box-${timeMs}`);
+    const box = document.getElementById(`intensity-box-${index}`);
     const btn = event.target;
 
     if (intensityRenderTimeout) {
@@ -580,23 +553,30 @@ function showIntensityData(event, timeMs) {
     // 2. 時間と地名の「複合条件」でAPIデータから検索する
     const targetTime = targetEq.timeMs;
     const targetLocation = targetEq.location;
+    const targetIntensity = String(targetEq.rawIntensity);
+
+    const scaleToRawMap = {
+        70: '7', 60: '6+', 55: '6-', 50: '5+', 45: '5-', 40: '4', 30: '3', 20: '2', 10: '1'
+    };
+
     const matchedData = p2pApiDataList.find(apiData => {
-        // API側のデータがない場合はスキップ
         if (!apiData.earthquake || !apiData.earthquake.hypocenter) return false;
         
         const apiTime = new Date(apiData.earthquake.time).getTime();
         const timeDiff = Math.abs(apiTime - targetTime);
 
-        // 条件A: 時間のズレが60秒（60,000ミリ秒）以内であること
-        const isTimeMatch = timeDiff <= 60000;
+        // 条件A: GASとP2Pの時間のズレが2分（120000ms）以内であること
+        const isTimeMatch = timeDiff <= 120000;
 
-        // 条件B: 震央地名が部分一致していること
-        // （例: 元データが「奄美」でAPIが「奄美大島近海」などの表記揺れを吸収する）
+        // 条件B: 震央地名の一致
         const apiLocation = apiData.earthquake.hypocenter.name || "";
         const isLocationMatch = apiLocation.includes(targetLocation) || targetLocation.includes(apiLocation);
 
-        // 両方を満たした時だけ「正解」とする
-        return isTimeMatch && isLocationMatch;
+        // 条件C: 震度が完全に一致していること（←これが1分差の地震を見分ける決め手！）
+        const apiIntensity = scaleToRawMap[apiData.earthquake.maxScale] || "不明";
+        const isIntensityMatch = (apiIntensity === targetIntensity);
+
+        return isTimeMatch && isLocationMatch && isIntensityMatch;
     });
 
     if (!matchedData || !matchedData.points || matchedData.points.length === 0) {
@@ -611,8 +591,19 @@ function showIntensityData(event, timeMs) {
     matchedData.points.forEach(point => {
         const scaleStr = scaleMap[point.scale];
         if (!scaleStr) return;
-        if (!intensityGroups[scaleStr]) intensityGroups[scaleStr] = [];
-        intensityGroups[scaleStr].push(`${point.pref} ${point.addr}`);
+        
+        // 震度の箱がなければ作る
+        if (!intensityGroups[scaleStr]) {
+            intensityGroups[scaleStr] = {};
+        }
+        
+        // その震度の中に、都道府県の箱がなければ作る
+        if (!intensityGroups[scaleStr][point.pref]) {
+            intensityGroups[scaleStr][point.pref] = [];
+        }
+        
+        // 都道府県の箱に市区町村（addr）を追加する
+        intensityGroups[scaleStr][point.pref].push(point.addr);
     });
 
     const scaleOrder = ['7', '6強', '6弱', '5強', '5弱', '4', '3', '2', '1'];
@@ -620,11 +611,38 @@ function showIntensityData(event, timeMs) {
     
     scaleOrder.forEach(scale => {
         if (intensityGroups[scale]) {
-            const areas = intensityGroups[scale].join('、 ');
+            let prefHtml = '';
+            
+            // 都道府県ごとにループを回してHTMLを組み立てる
+            for (const [pref, addrs] of Object.entries(intensityGroups[scale])) {
+                const areasStr = addrs.join(', '); // 市区町村を点で結ぶ
+                
+                // 都道府県名をバッジ風に装飾して表示
+                prefHtml += `
+                    <div style="display: flex; align-items: baseline; margin-bottom: 6px; line-height: 1.5;">
+                        <span style="
+                            background-color: #399ec2; 
+                            color: white; 
+                            font-size: 0.75rem; 
+                            padding: 2px 8px; 
+                            border-radius: 12px; 
+                            margin-right: 8px;
+                            width: 5em;
+                            flex-shrink: 0;
+                            text-align: center;
+                            font-weight: bold;
+                        ">${pref}</span>
+                        <span style="font-size: 0.9rem;">${areasStr}</span>
+                    </div>
+                `;
+            }
+
             html += `
-                <div class="intensity-group">
-                    <div class="intensity-group-title">震度 ${scale}</div>
-                    <div class="intensity-group-areas">${areas}</div>
+                <div class="intensity-group" style="margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <div class="intensity-group-title" style="font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; color: #b48611;">
+                        震度 ${scale}
+                    </div>
+                    <div class="intensity-group-areas">${prefHtml}</div>
                 </div>
             `;
         }
