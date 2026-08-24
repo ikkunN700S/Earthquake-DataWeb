@@ -288,6 +288,39 @@ document.getElementById('btn-update').addEventListener('click', async (e) => {
             })
             .sort((a, b) => b.timeMs - a.timeMs);
 
+        // GASデータとAPI地震データが一致しているか判定し不一致ならばAPIデータ更新
+        if (allEarthquakes.length > 0) {
+            // GAS側の「一番新しい地震」を1件だけ取り出す
+            const latestGasEq = allEarthquakes[0];
+            
+            const scaleToRawMap = {
+                70: '7', 60: '6+', 55: '6-', 50: '5+', 45: '5-', 40: '4', 30: '3', 20: '2', 10: '1'
+            };
+
+            // 手元のP2Pリストの中に、この最新の地震データがあるかチェックする
+            const hasLatestData = p2pApiDataList.some(apiData => {
+                if (!apiData.earthquake || !apiData.earthquake.hypocenter) return false;
+                
+                const apiTime = new Date(apiData.earthquake.time).getTime();
+                const timeDiff = Math.abs(apiTime - latestGasEq.timeMs);
+                
+                // 震度マップ表示の時と同じ「時間ズレ2分以内 ＋ 場所一致 ＋ 震度一致」で判定
+                const isTimeMatch = timeDiff <= 120000;
+                const apiLocation = apiData.earthquake.hypocenter.name || "";
+                const isLocationMatch = apiLocation.includes(latestGasEq.location) || latestGasEq.location.includes(apiLocation);
+                const apiIntensity = scaleToRawMap[apiData.earthquake.maxScale] || "不明";
+                const isIntensityMatch = (apiIntensity === String(latestGasEq.rawIntensity));
+                
+                return isTimeMatch && isLocationMatch && isIntensityMatch;
+            });
+
+            // もし「見つからなかった」場合のみ、APIを叩き直して最新100件を上書きする
+            if (!hasLatestData) {
+                console.log("🔄 最新の地震データがP2Pリストにありません。APIを再取得します。");
+                await prefetchApiData(); 
+            }
+        }
+
         // 最新のデータを使って、現在の検索条件のまま画面を再描画する
         executeSearch();
         
