@@ -619,7 +619,7 @@ function showIntensityData(event, index) {
                 
                 // 都道府県名をバッジ風に装飾して表示
                 prefHtml += `
-                    <div style="display: flex; align-items: baseline; margin-bottom: 6px; line-height: 1.5;">
+                    <div style="display: flex; align-items: flex-start; margin-bottom: 6px; line-height: 1.5;">
                         <span style="
                             background-color: #399ec2; 
                             color: white; 
