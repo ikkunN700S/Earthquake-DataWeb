@@ -591,8 +591,19 @@ function showIntensityData(event, index) {
     matchedData.points.forEach(point => {
         const scaleStr = scaleMap[point.scale];
         if (!scaleStr) return;
-        if (!intensityGroups[scaleStr]) intensityGroups[scaleStr] = [];
-        intensityGroups[scaleStr].push(`${point.pref} ${point.addr}`);
+        
+        // 震度の箱がなければ作る
+        if (!intensityGroups[scaleStr]) {
+            intensityGroups[scaleStr] = {};
+        }
+        
+        // その震度の中に、都道府県の箱がなければ作る
+        if (!intensityGroups[scaleStr][point.pref]) {
+            intensityGroups[scaleStr][point.pref] = [];
+        }
+        
+        // 都道府県の箱に市区町村（addr）を追加する
+        intensityGroups[scaleStr][point.pref].push(point.addr);
     });
 
     const scaleOrder = ['7', '6強', '6弱', '5強', '5弱', '4', '3', '2', '1'];
@@ -600,11 +611,38 @@ function showIntensityData(event, index) {
     
     scaleOrder.forEach(scale => {
         if (intensityGroups[scale]) {
-            const areas = intensityGroups[scale].join('、 ');
+            let prefHtml = '';
+            
+            // 都道府県ごとにループを回してHTMLを組み立てる
+            for (const [pref, addrs] of Object.entries(intensityGroups[scale])) {
+                const areasStr = addrs.join(', '); // 市区町村を点で結ぶ
+                
+                // 都道府県名をバッジ風に装飾して表示
+                prefHtml += `
+                    <div style="display: flex; align-items: baseline; margin-bottom: 6px; line-height: 1.5;">
+                        <span style="
+                            background-color: #399ec2; 
+                            color: white; 
+                            font-size: 0.75rem; 
+                            padding: 2px 8px; 
+                            border-radius: 12px; 
+                            margin-right: 8px;
+                            width: 5em;
+                            flex-shrink: 0;
+                            text-align: center;
+                            font-weight: bold;
+                        ">${pref}</span>
+                        <span style="font-size: 0.9rem;">${areasStr}</span>
+                    </div>
+                `;
+            }
+
             html += `
-                <div class="intensity-group">
-                    <div class="intensity-group-title">震度 ${scale}</div>
-                    <div class="intensity-group-areas">${areas}</div>
+                <div class="intensity-group" style="margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <div class="intensity-group-title" style="font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; color: #b48611;">
+                        震度 ${scale}
+                    </div>
+                    <div class="intensity-group-areas">${prefHtml}</div>
                 </div>
             `;
         }
