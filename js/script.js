@@ -231,6 +231,11 @@ function executeSearch() {
         return matchLoc && matchInt && matchMag && matchDate;
     });
 
+    // 各データに現在のリスト内での絶対的インデックスを付与
+    currentDataList.forEach((eq, index) => {
+        eq.listIndex = index;
+    });
+
     // ピンを再配置
     updateDisplay(currentDataList, "検索結果");
 
@@ -282,8 +287,6 @@ document.getElementById('btn-update').addEventListener('click', async (e) => {
                 };
             })
             .sort((a, b) => b.timeMs - a.timeMs);
-
-        // ※JSON（代表座標）は変化しないので再取得不要です
 
         // 最新のデータを使って、現在の検索条件のまま画面を再描画する
         executeSearch();
@@ -402,7 +405,7 @@ function selectMarker(index, data, fromPanel = false) {
     currentSelectedMarker = marker;
 
     // 地図をズーム
-    const targetZoom = Math.max(map.getZoom(), 10);
+    const targetZoom = Math.max(map.getZoom(), 8);
     map.setView(marker.getLatLng(), targetZoom, { animate: true });
 
     // パネルからのクリックではない時のみ、詳細表示に切り替える
@@ -443,7 +446,9 @@ function showDetail(data) {
 
     const titleHtml = data.length > 1 ? '<h3 style="font-size:0.9rem; color:#666;">直近の地震情報</h3>' : '';
 
-    const cardsHtml = data.map((data, index) => {
+    const cardsHtml = data.map((data) => {
+        // 絶対的インデックス
+        const index = data.listIndex;
         // ここで震度に基づいたクラスを取得
         const intensityClass = getIntensityClass(data.rawIntensity);
 
@@ -511,11 +516,11 @@ function showDetail(data) {
 function showIntensityData(event, index) {
     event.stopPropagation();
 
-    // ★ 1. まず表示中のリストから、対象の地震データを取得する（処理を一番上に移動）
+    // 表示中のリストから、対象の地震データを取得する（処理を一番上に移動）
     const targetEq = currentDataList[index];
     if (!targetEq) return;
 
-    // ★ 2. もしこの地震がまだ選択（赤いピン）されていなければ、自動的に選択する
+    // この地震がまだ選択（赤いピン）されていなければ、自動的に選択する
     if (!currentSelectedMarker || currentSelectedMarker !== markerMap[index]) {
         // 3番目の引数(fromPanel)を true にして、リストの再描画を防ぐ
         selectMarker(index, targetEq, true);
@@ -638,7 +643,7 @@ function showIntensityData(event, index) {
             }
 
             html += `
-                <div class="intensity-group" style="margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <div class="intensity-group" style="margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <div class="intensity-group-title" style="font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; color: #b48611;">
                         震度 ${scale}
                     </div>
