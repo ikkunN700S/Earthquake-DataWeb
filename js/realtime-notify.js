@@ -6,6 +6,7 @@
 let reconnectAttempts = 0;
 let currentWs = null; // 現在のWebSocket接続を保持
 let reconnectTimeoutId = null; // 再接続タイマーを保持
+let lastWsReconnectTime = 0; // 手動再接続の連打防止用タイマー
 let pollingIntervalId = null; // REST API定期取得のタイマーID
 const processedEventIds = new Set(); // 処理済みのデータIDを記録して重複を防ぐ
 
@@ -27,6 +28,23 @@ function updateWebSocketStatus(state) {
 
         // バッジをクリックした時の手動再接続処理
         statusEl.onclick = () => {
+            const now = Date.now();
+
+            // 前回クリックしてから10秒（10000ミリ秒）以内なら弾く
+            if (now - lastWsReconnectTime < 10000) {
+                const timeLeft = Math.ceil((10000 - (now - lastWsReconnectTime)) / 1000);
+                console.log(`⏳ 短時間での連続アクセスはできません。あと ${timeLeft} 秒お待ちください。`);
+                
+                // 弾かれたことが視覚的にわかるよう、少し左右に揺れる（エラー風）アニメーション
+                statusEl.style.transform = 'translateX(-5px)';
+                setTimeout(() => statusEl.style.transform = 'translateX(5px)', 50);
+                setTimeout(() => statusEl.style.transform = 'translateX(0)', 100);
+                return;
+            }
+            
+            // 実行時刻を記録
+            lastWsReconnectTime = now;
+
             // クリックアニメーション
             statusEl.style.transform = 'scale(0.95)';
             setTimeout(() => statusEl.style.transform = 'scale(1)', 100);
