@@ -4,6 +4,8 @@
 
 // 再接続の試行回数を記録する変数
 let reconnectAttempts = 0;
+let currentWs = null; // 現在のWebSocket接続を保持
+let reconnectTimeoutId = null; // 再接続タイマーを保持
 let pollingIntervalId = null; // REST API定期取得のタイマーID
 const processedEventIds = new Set(); // 処理済みのデータIDを記録して重複を防ぐ
 
@@ -18,10 +20,21 @@ function updateWebSocketStatus(state) {
             position: fixed; top: 20px; right: 20px;
             padding: 6px 12px; border-radius: 20px;
             font-size: 12px; font-weight: bold; color: white;
-            z-index: 10000; pointer-events: none;
+            z-index: 10000; cursor: pointer; user-select: none;
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             transition: background-color 0.3s;
         `;
+
+        // バッジをクリックした時の手動再接続処理
+        statusEl.onclick = () => {
+            // クリックアニメーション
+            statusEl.style.transform = 'scale(0.95)';
+            setTimeout(() => statusEl.style.transform = 'scale(1)', 100);
+            
+            console.log('🔄 WebSocketの再接続を強制実行します');
+            connectRealtimeAPI(); // 強制再接続
+        };
+
         document.body.appendChild(statusEl);
     }
 
@@ -126,12 +139,15 @@ async function fallbackPolling() {
         
         // もしAPIサーバーからの返答がエラーだった場合
         if (!res.ok) {
-            updateWebSocketStatus('offline');
+            // WebSocketが未接続でかつエラーならoffline
+            if (pollingIntervalId) updateWebSocketStatus('offline');
             return;
         }
         
-        // 取得に成功したら「バックアップ稼働中」の表示に戻す
-        updateWebSocketStatus('fallback');
+        // 取得に成功かつWebSocket未接続なら「バックアップ稼働中」の表示
+        if (pollingIntervalId) {
+            updateWebSocketStatus('fallback');
+        }
         
         const dataList = await res.json();
         
