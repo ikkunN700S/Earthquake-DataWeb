@@ -163,14 +163,25 @@ async function fallbackPolling() {
 
 // WebSocket接続開始関数
 function connectRealtimeAPI() {
-    // 最初の起動時や、バックアップすら動いていない時だけ「接続試行中」にする
-    if (!pollingIntervalId) {
-        updateWebSocketStatus('connecting');
+    // すでに動いているWebSocketは破棄
+    if (currentWs) {
+        currentWs.onclose = null; // 破棄時にoncloseイベントが暴発するのを防ぐ
+        currentWs.close();
+        currentWs = null;
     }
 
-    const ws = new WebSocket('wss://api.p2pquake.net/v2/ws');
+    // 自動再接続のタイマーが作動中ならば破棄
+    if (reconnectTimeoutId) {
+        clearTimeout(reconnectTimeoutId);
+        reconnectTimeoutId = null;
+    }
 
-    ws.onopen = () => {
+    // ステータス接続中
+    updateWebSocketStatus('connecting');
+    
+    currentWs = new WebSocket('wss://api.p2pquake.net/v2/ws');
+
+    currentWs.onopen = () => {
         console.log('📶 リアルタイム地震速報サーバーに接続しました');
         updateWebSocketStatus('realtime'); // 🟢 リアルタイム通信中に変更
         reconnectAttempts = 0; // 成功したらリセット
@@ -182,12 +193,12 @@ function connectRealtimeAPI() {
         }
     };
 
-    ws.onmessage = (event) => {
+    currentWs.onmessage = (event) => {
         const data = JSON.parse(event.data);
         processIncomingData(data); 
     };
 
-    ws.onclose = () => {
+    currentWs.onclose = () => {
         // 切断された直後は「🟠 バックアップ通信中」のステータスにする
         updateWebSocketStatus('fallback');
         
@@ -201,10 +212,10 @@ function connectRealtimeAPI() {
         console.warn(`⚠️ ${delay / 1000}秒後にWebSocket再接続を試みます...`);
         
         reconnectAttempts++;
-        setTimeout(connectRealtimeAPI, delay);
+        reconnectTimeoutId =setTimeout(connectRealtimeAPI, delay);
     };
     
-    ws.onerror = (error) => {
+    currentWs.onerror = (error) => {
         console.error('WebSocket エラー:', error);
     };
 }
