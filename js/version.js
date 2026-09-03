@@ -1,4 +1,4 @@
-fetch('./version.json?v=' + new Date().getTime())
+fetch('./version.json')
   .then(res => res.json())
   .then(data => {
     const el = document.getElementById('site-version');
