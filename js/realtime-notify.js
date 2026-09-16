@@ -240,24 +240,38 @@ function connectRealtimeAPI() {
 
 // 地震情報を処理
 function handleEarthquakeEvent(eq) {
-    if (!eq.hypocenter || !eq.hypocenter.name) return;
+    // 震源情報が丸ごと無い場合のみ弾き、名前が空文字("")の場合は弾かない
+    if (!eq) return;
     
     const time = eq.time ? eq.time.replace(/:\d{2}$/, '') : '不明';
-    const name = eq.hypocenter.name;
+    
+    // 震源名が空の場合は「震源調査中」とする
+    const name = (eq.hypocenter && eq.hypocenter.name) ? eq.hypocenter.name : '震源調査中';
+    
     const scaleNum = eq.maxScale;
     
     // スケール変換
     const scaleMap = { 70:'7', 60:'6強', 55:'6弱', 50:'5強', 45:'5弱', 40:'4', 30:'3', 20:'2', 10:'1' };
     const scaleStr = scaleMap[scaleNum] || (scaleNum === -1 ? '調査中' : '不明');
     
-    const magnitude = eq.hypocenter.magnitude !== -1 ? `M${eq.hypocenter.magnitude.toFixed(1)}` : "不明";
-    
-    // 深さ
+    // マグニチュード（-1の場合は調査中）
+    let magnitude = "不明";
+    if (eq.hypocenter && eq.hypocenter.magnitude !== -1) {
+        magnitude = `M${eq.hypocenter.magnitude.toFixed(1)}`;
+    } else if (eq.hypocenter && eq.hypocenter.magnitude === -1) {
+        magnitude = "調査中";
+    }
+
+    // 深さ（-1の場合は調査中）
     let depthStr = "不明";
-    if (eq.hypocenter.depth === 0) {
-        depthStr = "ごく浅い";
-    } else if (eq.hypocenter.depth > 0) {
-        depthStr = `約${eq.hypocenter.depth}km`;
+    if (eq.hypocenter) {
+        if (eq.hypocenter.depth === 0) {
+            depthStr = "ごく浅い";
+        } else if (eq.hypocenter.depth > 0) {
+            depthStr = `約${eq.hypocenter.depth}km`;
+        } else if (eq.hypocenter.depth === -1) {
+            depthStr = "調査中";
+        }
     }
 
     // 色分けの判定
