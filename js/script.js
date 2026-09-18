@@ -1,14 +1,10 @@
 // Service Worker の登録（PWA化）
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then((registration) => {
-                console.log('Service Worker 登録成功:', registration.scope);
-            })
-            .catch((error) => {
-                console.error('Service Worker 登録失敗:', error);
-            });
-    });
+    const repoName = '/Earthquake-DataWeb/'; 
+    
+    navigator.serviceWorker.register(`${repoName}sw.js`, { scope: repoName })
+        .then(reg => console.log('SW登録成功:', reg.scope))
+        .catch(err => console.error('SW登録失敗:', err));
 }
 
 const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSn6ZKPAr4mlAX68W1UVmp8wchoAn2qz2yUhCuIop_oI015bBHQPRL9iqZvUB6fAfQbKwWQ5X0QVKYZ/pub?gid=1745802546&single=true&output=csv';
