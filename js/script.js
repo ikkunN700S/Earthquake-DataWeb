@@ -1,8 +1,7 @@
 // Service Worker の登録（PWA化）
 if ('serviceWorker' in navigator) {
-    const repoName = '/Earthquake-DataWeb/'; 
-    
-    navigator.serviceWorker.register(`${repoName}sw.js`, { scope: repoName })
+    // 独自ドメイン（ルート階層）用の指定に変更
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
         .then(reg => console.log('SW登録成功:', reg.scope))
         .catch(err => console.error('SW登録失敗:', err));
 }
@@ -819,6 +818,13 @@ function drawIntensityMarkersOnMap(points) {
         intensityClusterGroup.addTo(map);
     }
 
+    const bounds = L.latLngBounds();
+
+    // 現在選択されている震源地の座標も領域に含める
+    if (currentSelectedMarker) {
+        bounds.extend(currentSelectedMarker.getLatLng());
+    }
+
     points.forEach(point => {
         const coords = getCoordinates(point.pref, point.addr);
 
@@ -835,7 +841,6 @@ function drawIntensityMarkersOnMap(points) {
                 iconAnchor: [12, 12]
             });
 
-            // customScaleというオプションに数値（point.scale）を持たせておく
             const marker = L.marker(coords, { 
                 icon: intensityIcon, 
                 zIndexOffset: 500,
@@ -864,8 +869,19 @@ function drawIntensityMarkersOnMap(points) {
             
             // クラスターに追加
             intensityClusterGroup.addLayer(marker);
+
+            // 描画した震度マーカーの座標を領域の箱に含める
+            bounds.extend(coords);
         }
     });
+
+    // すべてのマーカーが領域の箱に含まれていれば、地図のズームと位置を自動調整する
+    if (bounds.isValid()) {
+        map.fitBounds(bounds, {
+            padding: [40, 40], // 画面の端ギリギリにならないよう余白(ピクセル)を持たせる
+            maxZoom: 9         // 広範囲に震度がない場合に極端にズームしすぎるのを防ぐ
+        });
+    }
 }
 
 // 観測点JSONデータの読み込み
