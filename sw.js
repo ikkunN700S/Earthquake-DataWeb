@@ -1,5 +1,5 @@
 // キャッシュの名前（バージョンを変えると古いキャッシュが破棄されます）
-const CACHE_NAME = 'eq-app-v2';
+const CACHE_NAME = 'eq-app-v3';
 
 // アプリの骨組みとなる静的ファイル（これらはインストール時に保存される）
 const urlsToCache = [

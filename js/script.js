@@ -1,8 +1,7 @@
 // Service Worker の登録（PWA化）
 if ('serviceWorker' in navigator) {
-    const repoName = '/Earthquake-DataWeb/'; 
-    
-    navigator.serviceWorker.register(`${repoName}sw.js`, { scope: repoName })
+    // 独自ドメイン（ルート階層）用の指定に変更
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
         .then(reg => console.log('SW登録成功:', reg.scope))
         .catch(err => console.error('SW登録失敗:', err));
 }
