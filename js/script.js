@@ -87,6 +87,43 @@ const selectedIcon = new L.Icon({
     shadowSize: [41, 41]
 });
 
+function parseCSV(str) {
+    const result = [];
+    let row = [];
+    let col = '';
+    let insideQuotes = false;
+    
+    for (let i = 0; i < str.length; i++) {
+        const char = str[i];
+        const nextChar = str[i + 1];
+
+        if (char === '"') {
+            if (insideQuotes && nextChar === '"') {
+                col += '"'; // エスケープされた引用符
+                i++;
+            } else {
+                insideQuotes = !insideQuotes; // 引用符のオン・オフ
+            }
+        } else if (char === ',' && !insideQuotes) {
+            row.push(col);
+            col = '';
+        } else if ((char === '\n' || char === '\r') && !insideQuotes) {
+            if (char === '\r' && nextChar === '\n') i++;
+            row.push(col);
+            result.push(row);
+            row = [];
+            col = '';
+        } else {
+            col += char;
+        }
+    }
+    if (col !== '' || row.length > 0) {
+        row.push(col);
+        result.push(row);
+    }
+    return result.filter(r => r.join('').trim() !== ''); // 空行を除外
+}
+
 // 地図初期化
 function initMap() {
     map = L.map('map').setView([36.2048, 138.2529], 5);
@@ -197,19 +234,24 @@ async function loadData() {
         centerCoordinates = await jsonRes.json();
         const csvText = await csvRes.text();
         
-        allEarthquakes = csvText.split('\n')
-            .filter(line => line.trim() !== '')
-            .map(line => {
-                const [time, mag, location, intensity, lat, lon] = line.split(',').map(s => s.trim());
-                return { 
-                    time, mag: parseFloat(mag) || 0, location, 
-                    intensityLevel: getIntensityLevel(intensity), rawIntensity: intensity,
-                    csvLat: lat, csvLon: lon,
-                    // 検索用にDateオブジェクト（タイムスタンプ）を持つ
-                    timeMs: new Date(time).getTime()
-                };
-            })
-            .sort((a, b) => b.timeMs - a.timeMs);
+        allEarthquakes = parseCSV(csvText).map(row => {
+            const [time, mag, location, intensity, lat, lon, depth, comment] = row;
+            return { 
+                time, 
+                mag: parseFloat(mag) || 0, 
+                location: location ? location.trim() : "", 
+                intensityLevel: getIntensityLevel(intensity), 
+                rawIntensity: intensity ? intensity.trim() : "", 
+                csvLat: lat, 
+                csvLon: lon,
+                // ★ 深さとコメントがない（古いデータ）場合は「データなし」を代入
+                depth: (depth && depth.trim() !== "") ? depth.trim() : "データなし",
+                comment: (comment && comment.trim() !== "") ? comment.trim() : "データなし",
+                timeMs: time ? new Date(time).getTime() : 0
+            };
+        })
+        .filter(eq => eq.time) // 時刻がない不正な空行だけを安全に除外
+        .sort((a, b) => b.timeMs - a.timeMs);
 
         // 初期表示は「検索ボタンを押した場合と同じ挙動」
         executeSearch();
@@ -284,18 +326,24 @@ document.getElementById('btn-update').addEventListener('click', async (e) => {
         const csvText = await csvRes.text();
         
         // データを解析して allEarthquakes を上書きする
-        allEarthquakes = csvText.split('\n')
-            .filter(line => line.trim() !== '')
-            .map(line => {
-                const [time, mag, location, intensity, lat, lon] = line.split(',').map(s => s.trim());
-                return { 
-                    time, mag: parseFloat(mag) || 0, location, 
-                    intensityLevel: getIntensityLevel(intensity), rawIntensity: intensity,
-                    csvLat: lat, csvLon: lon,
-                    timeMs: new Date(time).getTime()
-                };
-            })
-            .sort((a, b) => b.timeMs - a.timeMs);
+        allEarthquakes = parseCSV(csvText).map(row => {
+            const [time, mag, location, intensity, lat, lon, depth, comment] = row;
+            return { 
+                time, 
+                mag: parseFloat(mag) || 0, 
+                location: location ? location.trim() : "", 
+                intensityLevel: getIntensityLevel(intensity), 
+                rawIntensity: intensity ? intensity.trim() : "", 
+                csvLat: lat, 
+                csvLon: lon,
+                // ★ 深さとコメントがない（古いデータ）場合は「データなし」を代入
+                depth: (depth && depth.trim() !== "") ? depth.trim() : "データなし",
+                comment: (comment && comment.trim() !== "") ? comment.trim() : "データなし",
+                timeMs: time ? new Date(time).getTime() : 0
+            };
+        })
+        .filter(eq => eq.time) // 時刻がない不正な空行だけを安全に除外
+        .sort((a, b) => b.timeMs - a.timeMs);
 
         // GASデータとAPI地震データが一致しているか判定し不一致ならばAPIデータ更新
         if (allEarthquakes.length > 0) {
@@ -511,6 +559,28 @@ function showDetail(data) {
             ? `<button class="intensity-btn" disabled>⚠️ API提供期間外（古いデータ）</button>`
             : `<button class="intensity-btn" onclick="showIntensityData(event, ${index})">▼ 各地の震度詳細を表示</button>`;
             
+        // コメント内容からバッジ（ラベル）を自動生成
+        let badgesHtml = '';
+        if (data.comment === 'データなし') {
+            // 過去のデータなど、コメント情報自体が存在しない場合
+            badgesHtml += `<span style="background-color: #a4b0be; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 6px; display: inline-block; margin-bottom: 4px;">情報なし</span>`;
+        } else {
+            // 新しいデータ（コメントあり）の場合
+            if (data.comment.includes('緊急地震速報')) {
+                badgesHtml += `<span style="background-color: #ff4757; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 6px; display: inline-block; margin-bottom: 4px;">🚨 緊急地震速報</span>`;
+            }
+            if (data.comment.includes('津波の心配はありません')) {
+                badgesHtml += `<span style="background-color: #2ed573; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 6px; display: inline-block; margin-bottom: 4px;">🌊 津波心配なし</span>`;
+            } else if (data.comment.includes('若干の海面変動')) {
+                badgesHtml += `<span style="background-color: #ffa502; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 6px; display: inline-block; margin-bottom: 4px;">🌊 海面変動あり</span>`;
+            } else if (data.comment.includes('津波警報') || data.comment.includes('津波注意報')) {
+                badgesHtml += `<span style="background-color: #ff4757; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 6px; display: inline-block; margin-bottom: 4px;">⚠️ 津波情報発表中</span>`;
+            }
+        }
+
+        // 深さの単位フォーマット（「データなし」の場合はそのまま表示）
+        const displayDepth = (data.depth === 'ごく浅い' || data.depth === 'データなし' || data.depth === '不明') ? data.depth : `約${data.depth}km`;
+
         return `
             <div class="eq-card" onclick="handleCardClick(${index})" style="cursor: pointer;">
                 <div class="eq-card-header ${intensityClass}">
@@ -519,21 +589,29 @@ function showDetail(data) {
                 </div>
                 
                 <div class="eq-card-body">
+                    ${badgesHtml ? `<div style="margin-bottom: 8px;">${badgesHtml}</div>` : ''}
+                    
                     <div class="eq-info">
                         <span>発生時刻</span>
                         <strong>${new Date(data.time).toLocaleString('ja-JP', { 
-                            year: 'numeric', 
-                            month: 'numeric', 
-                            day: 'numeric', 
-                            hour: 'numeric', 
-                            minute: 'numeric' 
+                            year: 'numeric', month: 'numeric', day: 'numeric', 
+                            hour: 'numeric', minute: 'numeric' 
                         })}</strong>
                     </div>
                     <div class="eq-info">
-                        <span>マグニチュード</span>
-                        <strong>M ${data.mag.toFixed(1)}</strong>
+                        <span>震源地</span>
+                        <strong>${data.location}</strong>
                     </div>
-                    <div class="eq-info" style="margin-top: 5px; justify-content: flex-end;">
+                    <div class="eq-info">
+                        <span>規模 (M)</span>
+                        <strong>${data.mag.toFixed(1)}</strong>
+                    </div>
+                    <div class="eq-info">
+                        <span>深さ</span>
+                        <strong>${displayDepth}</strong>
+                    </div>
+
+                    <div class="eq-info" style="margin-top: 8px; justify-content: flex-end; border-bottom: none;">
                         <a href="${searchUrl}" target="_blank" rel="noopener noreferrer" class="footer-link" onclick="event.stopPropagation();" style="font-size: 0.8rem;">
                             情報を検索
                         </a>
