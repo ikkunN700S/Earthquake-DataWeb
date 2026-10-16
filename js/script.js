@@ -578,8 +578,8 @@ function showDetail(data) {
             }
         }
 
-        // 深さの単位フォーマット（「データなし」の場合はそのまま表示）
-        const displayDepth = (data.depth === 'ごく浅い' || data.depth === 'データなし' || data.depth === '不明') ? data.depth : `約${data.depth}km`;
+        // 深さの単位フォーマット（「データなし」の場合はハイフンにする）
+        const displayDepth = data.depth === 'データなし' ? '-' : (data.depth === 'ごく浅い' || data.depth === '不明') ? data.depth : `約${data.depth}km`;
 
         return `
             <div class="eq-card" onclick="handleCardClick(${index})" style="cursor: pointer;">
@@ -603,8 +603,8 @@ function showDetail(data) {
                         <strong>${data.location}</strong>
                     </div>
                     <div class="eq-info">
-                        <span>規模 (M)</span>
-                        <strong>${data.mag.toFixed(1)}</strong>
+                        <span>規模</span>
+                        <strong>M${data.mag.toFixed(1)}</strong>
                     </div>
                     <div class="eq-info">
                         <span>深さ</span>
