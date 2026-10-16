@@ -612,17 +612,18 @@ function showIntensityData(event, index) {
         const apiTime = new Date(apiData.earthquake.time).getTime();
         const timeDiff = Math.abs(apiTime - targetTime);
 
-        // 条件A: GASとP2Pの時間のズレが2分（120000ms）以内であること
-        const isTimeMatch = timeDiff <= 120000;
-
         // 条件B: 震央地名の一致
         const apiLocation = apiData.earthquake.hypocenter.name || "";
         const isLocationMatch = apiLocation.includes(targetLocation) || targetLocation.includes(apiLocation);
 
-        // 条件C: 震度が完全に一致していること（←これが1分差の地震を見分ける決め手！）
+        // 条件A: 基本は2分(120000ms)以内。ただし地名が一致している場合は海外地震の修正を考慮し10分(600000ms)まで許容
+        const isTimeMatch = (timeDiff <= 120000) || (isLocationMatch && timeDiff <= 600000);
+
+        // 条件C: 震度が完全に一致していること
         const apiIntensity = scaleToRawMap[apiData.earthquake.maxScale] || "不明";
         const isIntensityMatch = (apiIntensity === targetIntensity);
 
+        // 海外・遠地地震の表記ゆれ対策
         return isTimeMatch && isLocationMatch && isIntensityMatch;
     });
 
