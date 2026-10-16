@@ -581,42 +581,50 @@ function showDetail(data) {
         const displayDepth = data.depth === 'データなし' ? '-' : (data.depth === 'ごく浅い' || data.depth === '不明') ? data.depth : `約${data.depth}km`;
 
         return `
-            <div class="eq-card" onclick="handleCardClick(${index})" style="cursor: pointer;">
-                <div class="eq-card-header ${intensityClass}">
-                    <span class="eq-intensity">震度 ${displayIntensity}</span>
-                    <span class="eq-location">${data.location}</span>
+            <div onclick="handleCardClick(${index})" class="bg-navy-800 border border-navy-700 rounded-lg shadow-md mb-4 overflow-hidden cursor-pointer hover:bg-navy-700 transition-colors duration-200">
+                
+                <!-- ヘッダー部分（震度と地名） -->
+                <div class="px-4 py-3 border-b border-navy-700 flex items-center justify-between ${intensityClass}">
+                    <span class="font-bold text-lg text-white drop-shadow-md">震度 ${displayIntensity}</span>
+                    <span class="font-bold text-slate-100">${data.location}</span>
                 </div>
                 
-                <div class="eq-card-body">
-                    ${badgesHtml ? `<div style="margin-bottom: 8px;">${badgesHtml}</div>` : ''}
+                <div class="p-4">
+                    <!-- バッジ表示エリア -->
+                    ${badgesHtml ? `<div class="mb-3">${badgesHtml}</div>` : ''}
                     
-                    <div class="eq-info">
-                        <span>発生時刻</span>
-                        <strong>${new Date(data.time).toLocaleString('ja-JP', { 
-                            year: 'numeric', month: 'numeric', day: 'numeric', 
-                            hour: 'numeric', minute: 'numeric' 
-                        })}</strong>
-                    </div>
-                    <div class="eq-info">
-                        <span>震源地</span>
-                        <strong>${data.location}</strong>
-                    </div>
-                    <div class="eq-info">
-                        <span>規模</span>
-                        <strong>M${data.mag.toFixed(1)}</strong>
-                    </div>
-                    <div class="eq-info">
-                        <span>深さ</span>
-                        <strong>${displayDepth}</strong>
+                    <!-- 情報リスト -->
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between items-center border-b border-navy-700 pb-1">
+                            <span class="text-slate-400">発生時刻</span>
+                            <strong class="text-slate-100">${new Date(data.time).toLocaleString('ja-JP', { 
+                                year: 'numeric', month: 'numeric', day: 'numeric', 
+                                hour: 'numeric', minute: 'numeric' 
+                            })}</strong>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-navy-700 pb-1">
+                            <span class="text-slate-400">震源地</span>
+                            <strong class="text-slate-100">${data.location}</strong>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-navy-700 pb-1">
+                            <span class="text-slate-400">規模</span>
+                            <strong class="text-slate-100">M${data.mag.toFixed(1)}</strong>
+                        </div>
+                        <div class="flex justify-between items-center pb-1">
+                            <span class="text-slate-400">深さ</span>
+                            <strong class="text-slate-100">${displayDepth}</strong>
+                        </div>
                     </div>
 
-                    <div class="eq-info" style="margin-top: 8px; justify-content: flex-end; border-bottom: none;">
-                        <a href="${searchUrl}" target="_blank" rel="noopener noreferrer" class="footer-link" onclick="event.stopPropagation();" style="font-size: 0.8rem;">
+                    <!-- アクションボタン領域 -->
+                    <div class="mt-4 flex justify-between items-center">
+                        ${buttonHtml.replace('class="intensity-btn"', 'class="text-xs bg-navy-700 hover:bg-slate-600 text-white py-1 px-3 rounded transition"')}
+                        <a href="${searchUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" class="text-xs text-accent hover:text-sky-300 underline">
                             情報を検索
                         </a>
                     </div>
-                    ${buttonHtml}
-                    <div id="intensity-box-${index}" class="intensity-details-container"></div>
+                    
+                    <div id="intensity-box-${index}" class="hidden mt-3 p-3 bg-navy-900 rounded border border-navy-700"></div>
                 </div>
             </div>
         `;
