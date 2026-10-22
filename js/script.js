@@ -1,10 +1,10 @@
-// --- 震度ごとのTailwindカラー定義（追加） ---
+// --- 震度ごとのTailwindカラー定義 ---
 const SHINDO_COLORS = {
     '7': 'bg-[#600239] text-white border-[#600239]',
-    '6+': 'bg-[#8a0557] text-white border-[#8a0557]',
-    '6-': 'bg-[#b40671] text-white border-[#b40671]',
-    '5+': 'bg-[#a50021] text-white border-[#a50021]',
-    '5-': 'bg-[#ff3300] text-white border-[#ff3300]',
+    '6強': 'bg-[#8a0557] text-white border-[#8a0557]',
+    '6弱': 'bg-[#b40671] text-white border-[#b40671]',
+    '5強': 'bg-[#a50021] text-white border-[#a50021]',
+    '5弱': 'bg-[#ff3300] text-white border-[#ff3300]',
     '4': 'bg-[#ffb100] text-gray-900 border-[#ffb100]',
     '3': 'bg-[#fae600] text-gray-900 border-[#fae600]',
     '2': 'bg-[#72d278] text-gray-900 border-[#72d278]',
@@ -12,8 +12,8 @@ const SHINDO_COLORS = {
 };
 
 const SHINDO_COLORS_NUM = {
-    70: SHINDO_COLORS['7'], 60: SHINDO_COLORS['6+'], 55: SHINDO_COLORS['6-'],
-    50: SHINDO_COLORS['5+'], 45: SHINDO_COLORS['5-'], 40: SHINDO_COLORS['4'],
+    70: SHINDO_COLORS['7'], 60: SHINDO_COLORS['6強'], 55: SHINDO_COLORS['6弱'],
+    50: SHINDO_COLORS['5強'], 45: SHINDO_COLORS['5弱'], 40: SHINDO_COLORS['4'],
     30: SHINDO_COLORS['3'], 20: SHINDO_COLORS['2'], 10: SHINDO_COLORS['1']
 };
 

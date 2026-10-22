@@ -37,6 +37,16 @@
     }
 }
 
+/* 観測点クラスタ */
+.station-dot-marker {
+    background-color: #64748b; /* Tailwindのslate-500相当のグレー */
+    border: 1.5px solid #ffffff;
+    border-radius: 50%;
+    width: 10px;
+    height: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
 /* 震源クラスタの数字色（黒に固定） */
 .marker-cluster div {
     color: #000000 !important;
