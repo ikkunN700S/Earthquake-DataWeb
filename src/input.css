@@ -56,6 +56,7 @@
 }
 
 @layer utilities {
+    /* カスタムスクロールバー */
     .realtime-notification-container::-webkit-scrollbar {
         display: none;
     }
@@ -72,8 +73,14 @@
         background: rgba(148, 163, 184, 0.3);
         border-radius: 4px;
     }
+
+    /* ローディングテキスト用ユーティリティ */
+    .loading-text {
+        animation: blink 1s infinite alternate;
+    }
 }
 
+/* アニメーション定義 */
 @keyframes slideDown {
     from {
         opacity: 0;
@@ -82,5 +89,14 @@
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+@keyframes blink {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0.4;
     }
 }
