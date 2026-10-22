@@ -519,6 +519,8 @@ function selectMarker(index, data, fromPanel = false) {
 
 // パネルのカードクリック時に呼ばれる関数
 function handleCardClick(index) {
+    closeAllIntensityPanels();
+
     const data = currentDataList[index];
     if (data) {
         selectMarker(index, data, true);
@@ -662,6 +664,8 @@ function showIntensityData(event, index) {
         if (!map.hasLayer(markerClusterGroup)) map.addLayer(markerClusterGroup);
         return;
     }
+
+    closeAllIntensityPanels();
 
     box.classList.remove('hidden');
     box.style.display = 'block';
@@ -930,6 +934,21 @@ function ensureEarthquakesVisible() {
         isEarthquakesVisible = true;
         updateEarthquakeVisibility();
     }
+}
+
+// すべての震度詳細パネルを閉じる補助関数
+function closeAllIntensityPanels() {
+    document.querySelectorAll('[id^="intensity-box-"]').forEach(box => {
+        if (!box.classList.contains('hidden')) {
+            box.classList.add('hidden');
+            box.style.display = '';
+            
+            const btn = box.parentElement.querySelector('button');
+            if (btn && !btn.disabled) { // disabled（期間外ボタン）でない場合のみ書き換え
+                btn.textContent = '▼ 各地の震度詳細を表示';
+            }
+        }
+    });
 }
 
 window.addEventListener('load', () => {
