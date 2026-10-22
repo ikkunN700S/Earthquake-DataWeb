@@ -1,3 +1,22 @@
+// --- 震度ごとのTailwindカラー定義（追加） ---
+const SHINDO_COLORS = {
+    '7': 'bg-[#600239] text-white border-[#600239]',
+    '6+': 'bg-[#8a0557] text-white border-[#8a0557]',
+    '6-': 'bg-[#b40671] text-white border-[#b40671]',
+    '5+': 'bg-[#a50021] text-white border-[#a50021]',
+    '5-': 'bg-[#ff3300] text-white border-[#ff3300]',
+    '4': 'bg-[#ffb100] text-gray-900 border-[#ffb100]',
+    '3': 'bg-[#fae600] text-gray-900 border-[#fae600]',
+    '2': 'bg-[#72d278] text-gray-900 border-[#72d278]',
+    '1': 'bg-[#8bafd6] text-gray-900 border-[#8bafd6]'
+};
+
+const SHINDO_COLORS_NUM = {
+    70: SHINDO_COLORS['7'], 60: SHINDO_COLORS['6+'], 55: SHINDO_COLORS['6-'],
+    50: SHINDO_COLORS['5+'], 45: SHINDO_COLORS['5-'], 40: SHINDO_COLORS['4'],
+    30: SHINDO_COLORS['3'], 20: SHINDO_COLORS['2'], 10: SHINDO_COLORS['1']
+};
+
 // Service Worker の登録（PWA化）
 if ('serviceWorker' in navigator) {
     // 独自ドメイン（ルート階層）用の指定に変更
@@ -32,34 +51,8 @@ let isEarthquakesVisible = true;
 const INTENSITY_SCALE_MAP = { 70:'7', 60:'6強', 55:'6弱', 50:'5強', 45:'5弱', 40:'4', 30:'3', 20:'2', 10:'1' };
 const INTENSITY_CLASS_MAP = { 70:'scale-7', 60:'scale-6p', 55:'scale-6m', 50:'scale-5p', 45:'scale-5m', 40:'scale-4', 30:'scale-3', 20:'scale-2', 10:'scale-1' };
 
-// 震度専用のクラスターグループ
-let intensityClusterGroup = L.markerClusterGroup({
-    maxClusterRadius: 40, // まとめる範囲（少し狭めにして各地の震度を見やすくする）
-    iconCreateFunction: function (cluster) {
-        // クラスターに含まれる全マーカーを取得
-        const markers = cluster.getAllChildMarkers();
-        let maxScale = 0;
-        
-        // その地域の中での「最大震度」を計算する
-        markers.forEach(marker => {
-            if (marker.options.customScale > maxScale) {
-                maxScale = marker.options.customScale;
-            }
-        });
-
-        // 最大震度のデザインを取得
-        const scaleStr = INTENSITY_SCALE_MAP[maxScale];
-        const cssClass = INTENSITY_CLASS_MAP[maxScale];
-
-        // クラスターアイコン（少し大きくして白枠をつける）を作成
-        return L.divIcon({
-            className: 'custom-div-icon',
-            html: `<div class="intensity-marker ${cssClass}" style="width: 32px; height: 32px; font-size: 16px; border: 2px solid white;">${scaleStr.replace('強','+').replace('弱','-')}</div>`,
-            iconSize: [32, 32],
-            iconAnchor: [16, 16]
-        });
-    }
-});
+let intensityClusterGroup;
+let selectedIcon;
 
 // --- 観測点JSONのデータを保持する変数 ---
 let stationDataList = [];
@@ -75,16 +68,6 @@ const PREF_NAMES = [
     "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県",
     "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"
 ];
-
-// 選択した時に表示する「赤いピン」の定義（外部の無料アイコンを利用）
-const selectedIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
 
 function parseCSV(str) {
     const result = [];
@@ -125,6 +108,37 @@ function parseCSV(str) {
 
 // 地図初期化
 function initMap() {
+    selectedIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    intensityClusterGroup = L.markerClusterGroup({
+        maxClusterRadius: 40,
+        iconCreateFunction: function (cluster) {
+            const markers = cluster.getAllChildMarkers();
+            let maxScale = 0;
+            markers.forEach(marker => {
+                if (marker.options.customScale > maxScale) {
+                    maxScale = marker.options.customScale;
+                }
+            });
+            const scaleStr = INTENSITY_SCALE_MAP[maxScale];
+            const colorClass = SHINDO_COLORS_NUM[maxScale] || 'bg-gray-500 text-white border-gray-500';
+
+            return L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div class="flex justify-center items-center w-8 h-8 rounded-full border-2 font-bold text-base shadow-[0_2px_5px_rgba(0,0,0,0.5)] ${colorClass}">${scaleStr.replace('強','+').replace('弱','-')}</div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            });
+        }
+    });
+
     map = L.map('map').setView([36.2048, 138.2529], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
@@ -300,8 +314,8 @@ document.getElementById('btn-search').addEventListener('click', executeSearch);
 document.getElementById('btn-reset').addEventListener('click', () => {
     // 各入力項目を空、または初期値に戻す
     document.getElementById('search-location').value = '';
-    document.getElementById('search-intensity').value = '0';
-    document.getElementById('search-mag').value = '0';
+    document.getElementById('search-intensity').selectedIndex = 0;
+    document.getElementById('search-mag').value = '';
     
     // 日付を「直近30日」に戻す（以前作った関数を再利用！）
     setDefaultDates();
@@ -580,51 +594,42 @@ function showDetail(data) {
         // 深さの単位フォーマット（「データなし」の場合はハイフンにする）
         const displayDepth = data.depth === 'データなし' ? '-' : (data.depth === 'ごく浅い' || data.depth === '不明') ? data.depth : `約${data.depth}km`;
 
+        const colorClass = SHINDO_COLORS[displayIntensity] || 'bg-navy-700 text-white';
+
         return `
-            <div onclick="handleCardClick(${index})" class="bg-navy-800 border border-navy-700 rounded-lg shadow-md mb-4 overflow-hidden cursor-pointer hover:bg-navy-700 transition-colors duration-200">
-                
-                <!-- ヘッダー部分（震度と地名） -->
-                <div class="px-4 py-3 border-b border-navy-700 flex items-center justify-between ${intensityClass}">
-                    <span class="font-bold text-lg text-white drop-shadow-md">震度 ${displayIntensity}</span>
-                    <span class="font-bold text-slate-100">${data.location}</span>
+            <div class="bg-navy-800 border border-navy-700 rounded-lg mb-4 shadow-md overflow-hidden cursor-pointer hover:border-accent transition-colors" onclick="handleCardClick(${index})">
+                <div class="px-4 py-2 flex items-center gap-3 ${colorClass} border-none">
+                    <span class="text-sm font-bold bg-white/20 px-2 py-0.5 rounded backdrop-blur-sm whitespace-nowrap">震度 ${displayIntensity}</span>
+                    <span class="text-[1.05rem] font-bold">${data.location}</span>
                 </div>
                 
-                <div class="p-4">
-                    <!-- バッジ表示エリア -->
+                <div class="p-3 bg-navy-800">
                     ${badgesHtml ? `<div class="mb-3">${badgesHtml}</div>` : ''}
                     
-                    <!-- 情報リスト -->
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between items-center border-b border-navy-700 pb-1">
+                    <div class="space-y-1.5 text-sm">
+                        <div class="flex justify-between items-center border-b border-navy-700 pb-1.5">
                             <span class="text-slate-400">発生時刻</span>
-                            <strong class="text-slate-100">${new Date(data.time).toLocaleString('ja-JP', { 
-                                year: 'numeric', month: 'numeric', day: 'numeric', 
-                                hour: 'numeric', minute: 'numeric' 
-                            })}</strong>
+                            <strong class="text-slate-200">${new Date(data.time).toLocaleString('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })}</strong>
                         </div>
-                        <div class="flex justify-between items-center border-b border-navy-700 pb-1">
+                        <div class="flex justify-between items-center border-b border-navy-700 pb-1.5">
                             <span class="text-slate-400">震源地</span>
-                            <strong class="text-slate-100">${data.location}</strong>
+                            <strong class="text-slate-200">${data.location}</strong>
                         </div>
-                        <div class="flex justify-between items-center border-b border-navy-700 pb-1">
-                            <span class="text-slate-400">規模</span>
-                            <strong class="text-slate-100">M${data.mag.toFixed(1)}</strong>
+                        <div class="flex justify-between items-center border-b border-navy-700 pb-1.5">
+                            <span class="text-slate-400">規模 (M)</span>
+                            <strong class="text-slate-200">${data.mag.toFixed(1)}</strong>
                         </div>
                         <div class="flex justify-between items-center pb-1">
                             <span class="text-slate-400">深さ</span>
-                            <strong class="text-slate-100">${displayDepth}</strong>
+                            <strong class="text-slate-200">${displayDepth}</strong>
                         </div>
                     </div>
 
-                    <!-- アクションボタン領域 -->
                     <div class="mt-4 flex justify-between items-center">
-                        ${buttonHtml.replace('class="intensity-btn"', 'class="text-xs bg-navy-700 hover:bg-slate-600 text-white py-1 px-3 rounded transition"')}
-                        <a href="${searchUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" class="text-xs text-accent hover:text-sky-300 underline">
-                            情報を検索
-                        </a>
+                        ${buttonHtml.replace('class="intensity-btn"', 'class="bg-navy-700 hover:bg-navy-600 text-slate-200 text-xs py-1.5 px-3 rounded transition-colors"')}
+                        <a href="${searchUrl}" target="_blank" rel="noopener noreferrer" class="text-xs text-accent hover:text-sky-300 underline" onclick="event.stopPropagation();">情報を検索</a>
                     </div>
-                    
-                    <div id="intensity-box-${index}" class="hidden mt-3 p-3 bg-navy-900 rounded border border-navy-700"></div>
+                    <div id="intensity-box-${index}" class="hidden mt-3 pt-3 border-t border-navy-700 text-sm"></div>
                 </div>
             </div>
         `;
@@ -748,34 +753,25 @@ function showIntensityData(event, index) {
             
             // 都道府県ごとにループを回してHTMLを組み立てる
             for (const [pref, addrs] of Object.entries(intensityGroups[scale])) {
-                const areasStr = addrs.join(', '); // 市区町村を点で結ぶ
+                const areasStr = addrs.join(', '); 
                 
-                // 都道府県名をバッジ風に装飾して表示
+                // ★ 「w-[4.5rem] (約72px)」と「shrink-0」を指定し、鹿児島県などの4文字でも絶対にズレないように固定
                 prefHtml += `
-                    <div style="display: flex; align-items: flex-start; margin-bottom: 6px; line-height: 1.5;">
-                        <span style="
-                            background-color: #399ec2; 
-                            color: white; 
-                            font-size: 0.75rem; 
-                            padding: 2px 8px; 
-                            border-radius: 12px; 
-                            margin-right: 8px;
-                            width: 5em;
-                            flex-shrink: 0;
-                            text-align: center;
-                            font-weight: bold;
-                        ">${pref}</span>
-                        <span style="font-size: 0.9rem;">${areasStr}</span>
+                    <div class="flex items-start mb-2 leading-relaxed">
+                        <span class="bg-sky-700 text-white text-[11px] py-0.5 rounded-full mr-3 w-[4.5rem] shrink-0 text-center font-bold">
+                            ${pref}
+                        </span>
+                        <span class="text-[13px] text-slate-300">${areasStr}</span>
                     </div>
                 `;
             }
 
             html += `
-                <div class="intensity-group" style="margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                    <div class="intensity-group-title" style="font-size: 1.1rem; font-weight: bold; margin-bottom: 8px; color: #b48611;">
+                <div class="mb-3 border-b border-navy-700 pb-2 last:border-b-0">
+                    <div class="text-[1.05rem] font-bold mb-2 text-amber-400 border-l-4 border-red-500 pl-2">
                         震度 ${scale}
                     </div>
-                    <div class="intensity-group-areas">${prefHtml}</div>
+                    <div class="pl-2">${prefHtml}</div>
                 </div>
             `;
         }
@@ -838,13 +834,12 @@ function drawIntensityMarkersOnMap(points) {
 
         if (coords) {
             const scaleStr = INTENSITY_SCALE_MAP[point.scale];
-            const cssClass = INTENSITY_CLASS_MAP[point.scale] || 'intensity-default';
-
+            const colorClass = SHINDO_COLORS_NUM[point.scale] || 'bg-gray-500 text-white border-gray-500';
             if (!scaleStr) return;
             
             const intensityIcon = L.divIcon({
                 className: 'custom-div-icon',
-                html: `<div class="intensity-marker ${cssClass}">${scaleStr.replace('強','+').replace('弱','-')}</div>`,
+                html: `<div class="flex justify-center items-center w-6 h-6 rounded-full border border-white font-bold text-sm shadow-[0_2px_4px_rgba(0,0,0,0.5)] ${colorClass}">${scaleStr.replace('強','+').replace('弱','-')}</div>`,
                 iconSize: [24, 24],
                 iconAnchor: [12, 12]
             });
@@ -982,6 +977,7 @@ function ensureEarthquakesVisible() {
     }
 }
 
-initializeApp();
-
-loadData();
+window.addEventListener('load', () => {
+    initializeApp();
+    loadData();
+});

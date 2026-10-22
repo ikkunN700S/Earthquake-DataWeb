@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    /* リアルタイムポップアップのコンテナ */
+    .realtime-notification-container {
+        @apply fixed top-5 left-1/2 -translate-x-1/2 z-[9999] block pointer-events-none w-[90%] max-w-[400px];
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+        scrollbar-width: none; /* Firefox用 */
+    }
+
+    /* リアルタイムポップアップ本体 */
+    .realtime-popup {
+        @apply bg-[#2f3542]/95 text-white p-4 rounded-lg border-l-[6px] border-[#2ed573] pointer-events-auto relative backdrop-blur-sm h-auto mb-3;
+        max-height: 50vh;
+        overflow-y: auto;
+        animation: slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    /* 震度・種類に応じた枠線の色変化 */
+    .realtime-popup.intensity-high {
+        @apply border-l-[#ff4757];
+    }
+    .realtime-popup.intensity-mid {
+        @apply border-l-[#ffa502];
+    }
+    .realtime-popup.eew-alert {
+        @apply border-l-[#ff3838] bg-[#c23616]/95;
+    }
+    .realtime-popup.tsunami-alert {
+        @apply border-l-[#0abde3] bg-[#0a3d62]/95;
+    }
+
+    /* 各種テキスト・ボタン */
+    .realtime-popup-title {
+        @apply text-xs font-bold text-[#ced6e0] mb-2;
+    }
+    .realtime-popup-content {
+        @apply text-sm leading-relaxed;
+    }
+    .realtime-popup-content strong {
+        @apply text-base text-[#ffda79];
+    }
+    .popup-close-btn {
+        @apply absolute top-2 right-3 cursor-pointer text-[#a4b0be] text-sm hover:text-white transition-colors;
+    }
+    .tsunami-warning-text {
+        @apply text-[#ff4757] font-bold inline-block mt-1 bg-[#ff4757]/20 px-2 py-0.5 rounded text-sm;
+    }
+
+    /* フッター */
+    footer {
+        @apply bg-navy-900 py-1.5 px-3 text-[11px] text-[#999] flex flex-wrap justify-center items-center gap-4;
+    }
+    .footer-link {
+        @apply text-[#aaa] no-underline hover:text-white hover:underline transition-colors;
+    }
+}
+
+@layer utilities {
+    /* カスタムスクロールバー（Webkit系） */
+    .realtime-notification-container::-webkit-scrollbar {
+        display: none;
+    }
+    .realtime-popup::-webkit-scrollbar, 
+    #info-panel::-webkit-scrollbar {
+        width: 6px;
+    }
+    .realtime-popup::-webkit-scrollbar-track, 
+    #info-panel::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .realtime-popup::-webkit-scrollbar-thumb, 
+    #info-panel::-webkit-scrollbar-thumb {
+        background: rgba(120, 120, 120, 0.3);
+        border-radius: 4px;
+    }
+}
+
+/* 独自アニメーション（@layer の外か utilities 内に記述） */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes blink {
+    from { opacity: 1; }
+    to { opacity: 0.4; }
+}
+.loading-text {
+    animation: blink 1s infinite alternate;
+}

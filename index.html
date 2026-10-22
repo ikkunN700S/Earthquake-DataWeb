@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="format-detection" content="telephone=no, address=no, email=no, date=no">
     <link rel="manifest" href="./manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,71 +17,76 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    
-    <link rel="stylesheet" href="style.css">
-    <!-- Tailwind CSS本体 -->
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-
     <script>
-    tailwind.config = {
-        theme: {
-        extend: {
-            colors: {
-            navy: {
-                900: '#0f172a',
-                800: '#1e293b',
-                700: '#334155',
-            },
-            accent: '#399ec2'
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            900: '#0f172a', // 全体背景・ヘッダー
+                            800: '#1e293b', // パネル背景
+                            700: '#334155', // 境界線・ホバー
+                            600: '#475569', // 入力枠など
+                        },
+                        accent: '#38bdf8' // アクセントカラー（水色）
+                    }
+                }
             }
         }
-        }
-    }
     </script>
+    
+    <!-- Tailwindでは補いきれないスクロールバーやアニメーションの独自設定 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 4px; }
+        }
+        @layer components {
+            .marker-cluster div {
+                color: #000000 !important;
+                font-weight: bold !important;
+            }
+            .realtime-popup {
+                @apply bg-navy-800/95 text-white p-4 rounded-lg border-l-[6px] pointer-events-auto relative backdrop-blur shadow-lg mb-3 max-h-[50vh] overflow-y-auto custom-scrollbar;
+                animation: slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            }
+            @keyframes slideDown {
+                from { opacity: 0; transform: translateY(-30px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        }
+    </style>
 </head>
-<body>
-    <header>
-        <h1>地震データベースWeb</h1>
-        <p class="attention">2023年03月03日以降の地震データを閲覧できます。<br>地震規模が更新された場合、同一日時データが複数表示されます。<br>2026年04月24日以前の震央は代表地点が表示されます。</p>
+<body class="bg-navy-900 text-slate-200 h-[100dvh] flex flex-col font-sans overflow-hidden m-0">
+
+    <!-- 1. ヘッダー -->
+    <header class="bg-navy-900 border-b border-navy-700 py-3 px-4 flex flex-wrap items-center gap-4">
+        <h1 class="m-0 text-xl font-bold text-accent whitespace-nowrap">地震データベースWeb</h1>
+        <p class="m-0 text-xs text-slate-400 leading-tight">※データは気象庁防災情報XML等をもとに独自に整形したものです<br>2023年03月03日以降の地震データを閲覧できます。</p>
     </header>
 
-    <div class="map-toggle-container">
-        <label class="station-toggle-label">
-            <input type="checkbox" id="toggle-earthquake-btn" checked>
-            <span class="station-toggle-slider earthquake-slider"></span>
-            地震ピンを表示
+    <!-- 2. ツールバー（検索・トグル） -->
+    <div class="bg-navy-800 py-2 px-4 flex flex-wrap items-center gap-4 border-b border-navy-700 shadow-sm">
+        <!-- トグルスイッチ -->
+        <label class="inline-flex items-center cursor-pointer text-sm font-bold text-slate-300 gap-2 shrink-0">
+            <input type="checkbox" id="toggle-earthquake-btn" class="sr-only peer" checked>
+            <div class="w-9 h-5 bg-navy-600 rounded-full peer peer-checked:bg-accent relative transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+            地震マーカー
         </label>
-        <label class="station-toggle-label">
-            <input type="checkbox" id="toggle-stations-btn">
-            <span class="station-toggle-slider"></span>
-            震度観測点をすべて表示
+        <label class="inline-flex items-center cursor-pointer text-sm font-bold text-slate-300 gap-2 shrink-0">
+            <input type="checkbox" id="toggle-stations-btn" class="sr-only peer" checked>
+            <div class="w-9 h-5 bg-navy-600 rounded-full peer peer-checked:bg-accent relative transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+            観測点
         </label>
-    </div>
-    
-    <section id="search-bar">
-        <button id="btn-zoom-reset" class="btn-secondary">日本全体</button>
-        <button id="btn-reset" class="btn-secondary">条件ﾘｾｯﾄ</button>
-
-        <div class="input-group">
-            <label>期間:</label>
-            <input type="date" id="search-date-start"> ～ 
-            <input type="date" id="search-date-end">
-        </div>
-
-        <div class="input-group">
-            <label>地域:</label>
-            <input type="text" id="search-location" placeholder="例: 奄美" style="width: 80px;">
-        </div>
-
-        <div class="input-group">
-            <label>ﾏｸﾞﾆﾁｭｰﾄﾞ:</label>
-            <input type="number" id="search-mag" step="0.1" value="" min="0" style="width: 60px;">
-        </div>
-
-        <div class="input-group">
-            <label>震度:</label>
-            <select id="search-intensity">
-                <option value="0">すべて</option>
+        
+        <!-- 検索入力グループ -->
+        <div class="flex flex-wrap items-center gap-2">
+            <input type="text" id="search-location" placeholder="地名 (例: 東京)" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent w-32">
+            <input type="number" id="search-mag" placeholder="M以上" min="0" step="0.1" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent w-20">
+            <select id="search-intensity" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent">
                 <option value="1">震度 1 以上</option>
                 <option value="2">震度 2 以上</option>
                 <option value="3">震度 3 以上</option>
@@ -91,25 +97,35 @@
                 <option value="6.0">震度 6強 以上</option>
                 <option value="7">震度 7</option>
             </select>
+            <div class="flex items-center gap-1">
+                <input type="date" id="search-date-start" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent">
+                <span class="text-slate-400">～</span>
+                <input type="date" id="search-date-end" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent">
+            </div>
         </div>
-        <button id="btn-search">検索</button>
-        <span id="result-count">読み込み中...</span>
-        <div class="sub-buttons">
-            <button id="btn-update" class="btn-secondary">データ更新</button>
-        </div>
-    </section>
 
-    <main>
-        <div id="map"></div>
-        <div id="info-panel">
-            <h2>詳細情報</h2>
-            <p class="placeholder">マーカーを選択してください</p>
+        <!-- ボタン類 -->
+        <div class="ml-auto flex gap-2 shrink-0">
+            <button id="btn-search" class="bg-accent hover:bg-sky-400 text-navy-900 font-bold px-3 py-1.5 rounded text-sm transition-colors shadow">検索</button>
+            <button id="btn-reset" class="bg-emerald-500 hover:bg-emerald-400 text-navy-900 font-bold px-3 py-1.5 rounded text-sm transition-colors shadow">リセット</button>
+            <button id="btn-update" class="bg-navy-600 hover:bg-navy-500 text-white font-bold px-3 py-1.5 rounded text-sm transition-colors shadow">最新取得</button>
+            <button id="btn-zoom-reset" class="bg-rose-500 hover:bg-rose-400 text-white font-bold px-3 py-1.5 rounded text-sm transition-colors shadow">地図リセット</button>
+        </div>
+    </div>
+
+    <!-- 3. メインコンテンツ（地図＋パネル） -->
+    <main class="flex flex-1 overflow-hidden relative">
+        <!-- 地図 -->
+        <div id="map" class="flex-[2] min-w-0 z-[1] bg-navy-900"></div>
+        <!-- 情報パネル -->
+        <div id="info-panel" class="flex-1 min-w-[300px] max-w-[400px] bg-navy-900 p-4 overflow-y-auto border-l border-navy-700 shadow-[-4px_0_10px_rgba(0,0,0,0.3)] custom-scrollbar">
+            <div id="result-count" class="text-sm text-slate-400 mb-3 pb-2 border-b border-navy-700"></div>
             <div id="details"></div>
         </div>
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="./js/script.js"></script>
     <script src="./js/stations-viewer.js"></script>
     <script src="./js/realtime-notify.js"></script>

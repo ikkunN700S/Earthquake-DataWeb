@@ -1,0 +1,24 @@
+{
+  "name": "earthquake-dataweb",
+  "version": "1.0.0",
+  "description": "2026年08月23日更新（v1.2.2準拠）",
+  "main": "sw.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ikkunN700S/Earthquake-DataWeb.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ikkunN700S/Earthquake-DataWeb/issues"
+  },
+  "homepage": "https://github.com/ikkunN700S/Earthquake-DataWeb#readme",
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}
