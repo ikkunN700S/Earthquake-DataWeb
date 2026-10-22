@@ -1,10 +1,9 @@
 {
   "name": "earthquake-dataweb",
   "version": "1.0.0",
-  "description": "2026年08月23日更新（v1.2.2準拠）",
-  "main": "sw.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "tailwindcss -i ./src/input.css -o ./style.css --watch",
+    "build": "tailwindcss -i ./src/input.css -o ./style.css --minify"
   },
   "repository": {
     "type": "git",
