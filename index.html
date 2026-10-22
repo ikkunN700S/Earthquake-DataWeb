@@ -25,43 +25,52 @@
         <p class="m-0 text-xs text-slate-400 leading-tight">※データは気象庁防災情報XML等をもとに独自に整形したものです<br>2023年03月03日以降の地震データを閲覧できます。<br>2026年04月24日以前の震央は代表地点が表示されます。</p>
     </header>
 
-    <div class="shrink-0 bg-navy-800 py-2 px-4 flex flex-wrap items-center gap-4 border-b border-navy-700 shadow-sm">
-        <label class="inline-flex items-center cursor-pointer text-sm font-bold text-slate-300 gap-2 shrink-0">
-            <input type="checkbox" id="toggle-earthquake-btn" class="sr-only peer" checked>
-            <div class="w-9 h-5 bg-navy-600 rounded-full peer peer-checked:bg-accent relative transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
-            地震マーカー
-        </label>
-        <label class="inline-flex items-center cursor-pointer text-sm font-bold text-slate-300 gap-2 shrink-0">
-            <input type="checkbox" id="toggle-stations-btn" class="sr-only peer">
-            <div class="w-9 h-5 bg-navy-600 rounded-full peer peer-checked:bg-accent relative transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
-            観測点
-        </label>
-        <div class="flex flex-wrap items-center gap-2">
-            <input type="text" id="search-location" placeholder="地名 (例: 東京)" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent w-32">
-            <input type="number" id="search-mag" placeholder="M以上" min="0" step="0.1" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent w-20">
-            <select id="search-intensity" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent">
-                <option value="1">震度 1 以上</option>
-                <option value="2">震度 2 以上</option>
-                <option value="3">震度 3 以上</option>
-                <option value="4">震度 4 以上</option>
-                <option value="4.5">震度 5弱 以上</option>
-                <option value="5.0">震度 5強 以上</option>
-                <option value="5.5">震度 6弱 以上</option>
-                <option value="6.0">震度 6強 以上</option>
-                <option value="7">震度 7</option>
-            </select>
-            <div class="flex items-center gap-1">
-                <input type="date" id="search-date-start" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent">
-                <span class="text-slate-400">～</span>
-                <input type="date" id="search-date-end" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent">
-            </div>
+    <div class="shrink-0 bg-navy-800 border-b border-navy-700 shadow-sm">
+        <div id="mobile-search-toggle" class="md:hidden py-2.5 px-4 flex justify-between items-center cursor-pointer hover:bg-navy-700 transition-colors">
+            <span class="text-sm font-bold text-slate-200">🔍 検索・表示設定</span>
+            <span id="mobile-search-icon" class="text-slate-400 text-sm transition-transform duration-300">▼</span>
         </div>
 
-        <div class="ml-auto flex gap-2 shrink-0">
-            <button id="btn-search" class="bg-accent hover:bg-sky-400 text-navy-900 font-bold px-3 py-1.5 rounded text-sm transition-colors shadow">検索</button>
-            <button id="btn-reset" class="bg-emerald-500 hover:bg-emerald-400 text-navy-900 font-bold px-3 py-1.5 rounded text-sm transition-colors shadow">リセット</button>
-            <button id="btn-update" class="bg-navy-600 hover:bg-navy-500 text-white font-bold px-3 py-1.5 rounded text-sm transition-colors shadow">最新取得</button>
-            <button id="btn-zoom-reset" class="bg-rose-500 hover:bg-rose-400 text-white font-bold px-3 py-1.5 rounded text-sm transition-colors shadow">地図リセット</button>
+        <div id="search-container" class="hidden md:block border-t border-navy-700 md:border-t-0">
+            <div class="py-2 px-4 flex flex-wrap items-center gap-4">
+                <label class="inline-flex items-center cursor-pointer text-sm font-bold text-slate-300 gap-2 shrink-0">
+                    <input type="checkbox" id="toggle-earthquake-btn" class="sr-only peer" checked>
+                    <div class="w-9 h-5 bg-navy-600 rounded-full peer peer-checked:bg-accent relative transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+                    地震マーカー
+                </label>
+                <label class="inline-flex items-center cursor-pointer text-sm font-bold text-slate-300 gap-2 shrink-0">
+                    <input type="checkbox" id="toggle-stations-btn" class="sr-only peer">
+                    <div class="w-9 h-5 bg-navy-600 rounded-full peer peer-checked:bg-accent relative transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+                    観測点
+                </label>
+                <div class="flex flex-wrap items-center gap-2">
+                    <input type="text" id="search-location" placeholder="地名 (例: 東京)" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent w-32">
+                    <input type="number" id="search-mag" placeholder="M以上" min="0" step="0.1" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent w-20">
+                    <select id="search-intensity" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent">
+                        <option value="1">震度 1 以上</option>
+                        <option value="2">震度 2 以上</option>
+                        <option value="3">震度 3 以上</option>
+                        <option value="4">震度 4 以上</option>
+                        <option value="4.5">震度 5弱 以上</option>
+                        <option value="5.0">震度 5強 以上</option>
+                        <option value="5.5">震度 6弱 以上</option>
+                        <option value="6.0">震度 6強 以上</option>
+                        <option value="7">震度 7</option>
+                    </select>
+                    <div class="flex items-center gap-1">
+                        <input type="date" id="search-date-start" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent">
+                        <span class="text-slate-400">～</span>
+                        <input type="date" id="search-date-end" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent">
+                    </div>
+                </div>
+
+                <div class="ml-auto flex gap-2 shrink-0">
+                    <button id="btn-search" class="bg-accent hover:bg-sky-400 text-navy-900 font-bold px-3 py-1.5 rounded text-sm transition-colors shadow">検索</button>
+                    <button id="btn-reset" class="bg-emerald-500 hover:bg-emerald-400 text-navy-900 font-bold px-3 py-1.5 rounded text-sm transition-colors shadow">リセット</button>
+                    <button id="btn-update" class="bg-navy-600 hover:bg-navy-500 text-white font-bold px-3 py-1.5 rounded text-sm transition-colors shadow">最新取得</button>
+                    <button id="btn-zoom-reset" class="bg-rose-500 hover:bg-rose-400 text-white font-bold px-3 py-1.5 rounded text-sm transition-colors shadow">地図リセット</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -86,9 +95,7 @@
         <a href="https://github.com/ikkunN700S/Earthquake-DataWeb#%E5%9C%B0%E9%9C%87%E3%83%87%E3%83%BC%E3%82%BF%E3%83%99%E3%83%BC%E3%82%B9web" target="_blank" rel="noopener noreferrer" class="footer-link">利用上の注意事項</a>
         <a href="" id="share-link" class="footer-link">ページを共有する</a>
 
-        <script>
-            document.getElementById('current-year').textContent = new Date().getFullYear();
-        </script>
+        <script src="./js/components.js"></script>
         <script src="./js/version.js"></script>
         <script src="./js/sharelink.js"></script>
     </footer>
