@@ -1,0 +1,23 @@
+{
+  "name": "earthquake-dataweb",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "tailwindcss -i ./src/input.css -o ./style.css --watch",
+    "build": "tailwindcss -i ./src/input.css -o ./style.css --minify"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ikkunN700S/Earthquake-DataWeb.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ikkunN700S/Earthquake-DataWeb/issues"
+  },
+  "homepage": "https://github.com/ikkunN700S/Earthquake-DataWeb#readme",
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}

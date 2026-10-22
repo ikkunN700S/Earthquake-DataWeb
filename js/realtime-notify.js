@@ -18,7 +18,7 @@ function updateWebSocketStatus(state) {
         statusEl = document.createElement('div');
         statusEl.id = 'websocket-status-badge';
         statusEl.style.cssText = `
-            position: fixed; top: 20px; right: 20px;
+            position: fixed; top: 10px; right: 10px;
             padding: 6px 12px; border-radius: 20px;
             font-size: 12px; font-weight: bold; color: white;
             z-index: 10000; cursor: pointer; user-select: none;
