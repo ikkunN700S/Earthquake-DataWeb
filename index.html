@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> 
     <meta name="format-detection" content="telephone=no, address=no, email=no, date=no">
     <link rel="manifest" href="./manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -20,16 +20,12 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-navy-900 text-slate-200 h-[100dvh] flex flex-col font-sans overflow-hidden m-0">
-
-    <!-- 1. ヘッダー -->
-    <header class="bg-navy-900 border-b border-navy-700 py-3 px-4 flex flex-wrap items-center gap-4">
+    <header class="shrink-0 bg-navy-900 border-b border-navy-700 py-3 px-4 flex flex-wrap items-center gap-4">
         <h1 class="m-0 text-xl font-bold text-accent whitespace-nowrap">地震データベースWeb</h1>
         <p class="m-0 text-xs text-slate-400 leading-tight">※データは気象庁防災情報XML等をもとに独自に整形したものです<br>2023年03月03日以降の地震データを閲覧できます。<br>2026年04月24日以前の震央は代表地点が表示されます。</p>
     </header>
 
-    <!-- 2. ツールバー（検索・トグル） -->
-    <div class="bg-navy-800 py-2 px-4 flex flex-wrap items-center gap-4 border-b border-navy-700 shadow-sm">
-        <!-- トグルスイッチ -->
+    <div class="shrink-0 bg-navy-800 py-2 px-4 flex flex-wrap items-center gap-4 border-b border-navy-700 shadow-sm">
         <label class="inline-flex items-center cursor-pointer text-sm font-bold text-slate-300 gap-2 shrink-0">
             <input type="checkbox" id="toggle-earthquake-btn" class="sr-only peer" checked>
             <div class="w-9 h-5 bg-navy-600 rounded-full peer peer-checked:bg-accent relative transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
@@ -40,7 +36,6 @@
             <div class="w-9 h-5 bg-navy-600 rounded-full peer peer-checked:bg-accent relative transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
             観測点
         </label>
-        <!-- 検索入力グループ -->
         <div class="flex flex-wrap items-center gap-2">
             <input type="text" id="search-location" placeholder="地名 (例: 東京)" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent w-32">
             <input type="number" id="search-mag" placeholder="M以上" min="0" step="0.1" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent w-20">
@@ -62,7 +57,6 @@
             </div>
         </div>
 
-        <!-- ボタン類 -->
         <div class="ml-auto flex gap-2 shrink-0">
             <button id="btn-search" class="bg-accent hover:bg-sky-400 text-navy-900 font-bold px-3 py-1.5 rounded text-sm transition-colors shadow">検索</button>
             <button id="btn-reset" class="bg-emerald-500 hover:bg-emerald-400 text-navy-900 font-bold px-3 py-1.5 rounded text-sm transition-colors shadow">リセット</button>
@@ -71,12 +65,10 @@
         </div>
     </div>
 
-    <!-- 3. メインコンテンツ（地図＋パネル） -->
-    <main class="flex flex-1 overflow-hidden relative">
-        <!-- 地図 -->
-        <div id="map" class="flex-[2] min-w-0 z-[1] bg-navy-900"></div>
-        <!-- 情報パネル -->
-        <div id="info-panel" class="flex-1 min-w-[300px] max-w-[400px] bg-navy-900 p-4 overflow-y-auto border-l border-navy-700 shadow-[-4px_0_10px_rgba(0,0,0,0.3)] custom-scrollbar">
+    <main class="flex flex-col md:flex-row flex-1 overflow-hidden relative">
+        <div id="map" class="flex-1 md:flex-[2] min-h-[45%] md:min-h-0 min-w-0 z-[1] bg-navy-900"></div>
+        
+        <div id="info-panel" class="flex-1 w-full md:w-auto md:min-w-[300px] md:max-w-[400px] bg-navy-900 p-4 overflow-y-auto border-t md:border-t-0 md:border-l border-navy-700 shadow-[-4px_0_10px_rgba(0,0,0,0.3)] custom-scrollbar">
             <div id="result-count" class="text-sm text-slate-400 mb-3 pb-2 border-b border-navy-700"></div>
             <div id="details"></div>
         </div>
@@ -88,12 +80,15 @@
     <script src="./js/stations-viewer.js"></script>
     <script src="./js/realtime-notify.js"></script>
 
-    <footer>
-        <p class="copyright">&copy; 2026 ikkunN700S</p>
-        <p id="site-version"></p>
+    <footer class="shrink-0 bg-navy-900 py-1.5 px-3 text-[11px] text-[#999] flex flex-wrap justify-center items-center gap-4">
+        <p class="copyright m-0">&copy; <span id="current-year"></span> ikkunN700S</p>
+        <p id="site-version" class="m-0"></p>
         <a href="https://github.com/ikkunN700S/Earthquake-DataWeb#%E5%9C%B0%E9%9C%87%E3%83%87%E3%83%BC%E3%82%BF%E3%83%99%E3%83%BC%E3%82%B9web" target="_blank" rel="noopener noreferrer" class="footer-link">利用上の注意事項</a>
         <a href="" id="share-link" class="footer-link">ページを共有する</a>
 
+        <script>
+            document.getElementById('current-year').textContent = new Date().getFullYear();
+        </script>
         <script src="./js/version.js"></script>
         <script src="./js/sharelink.js"></script>
     </footer>
