@@ -3,12 +3,6 @@
 @tailwind utilities;
 
 @layer components {
-    /* 震源クラスタの数字色（黒に固定） */
-    .marker-cluster div {
-        color: #000000 !important;
-        font-weight: bold !important;
-    }
-
     /* リアルタイムポップアップ用コンテナ */
     .realtime-notification-container {
         @apply fixed top-5 left-1/2 -translate-x-1/2 z-[9999] block pointer-events-none w-[90%] max-w-[400px];
@@ -78,6 +72,11 @@
     .loading-text {
         animation: blink 1s infinite alternate;
     }
+}
+
+.marker-cluster div {
+    color: #000000 !important;
+    font-weight: bold !important;
 }
 
 /* アニメーション定義 */

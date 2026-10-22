@@ -542,58 +542,51 @@ function getIntensityClass(rawIntensity) {
 }
 
 // 詳細表示
+// 詳細表示
 function showDetail(data) {
     const detailsDiv = document.getElementById('details');
     const placeholder = document.querySelector('.placeholder');
     if (placeholder) placeholder.style.display = 'none';
 
-    const titleHtml = data.length > 1 ? '<h3 style="font-size:0.9rem; color:#666;">直近の地震情報</h3>' : '';
+    const titleHtml = data.length > 1 ? '<h3 class="text-sm text-slate-400 mb-3 pb-1 border-b border-navy-700">直近の地震情報</h3>' : '';
 
     const cardsHtml = data.map((data) => {
-        // 絶対的インデックス
         const index = data.listIndex;
-        // ここで震度に基づいたクラスを取得
-        const intensityClass = getIntensityClass(data.rawIntensity);
-
+        
         // 画面表示用に表記を変換
         const displayIntensity = data.rawIntensity
             .replace('5-', '5弱').replace('5+', '5強')
             .replace('6-', '6弱').replace('6+', '6強');
 
-        // ★Google検索用に綺麗な文字列を作る（例: "2026年4月24日"）
         const d = new Date(data.time);
         const searchDateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}時${d.getMinutes()}分`;
-        // 検証用リンク（Google検索で「地震 発生日時 震源地」を検索）
         const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchDateStr + ' ' + data.location + ' 地震')}`;
 
         const isOutOfRange = p2pOldestTimeMs !== null && data.timeMs < p2pOldestTimeMs;
-        // 範囲外なら disabled 属性付きのグレーアウトボタンにする
+        
         const buttonHtml = isOutOfRange
-            ? `<button class="intensity-btn" disabled>⚠️ API提供期間外（古いデータ）</button>`
-            : `<button class="intensity-btn" onclick="showIntensityData(event, ${index})">▼ 各地の震度詳細を表示</button>`;
+            ? `<button class="w-full mt-3 bg-navy-700 text-slate-400 text-xs py-2 px-3 rounded cursor-not-allowed opacity-70" disabled>⚠️ API提供期間外（古いデータ）</button>`
+            : `<button class="w-full mt-3 bg-navy-700 hover:bg-navy-600 text-slate-200 text-xs py-2 px-3 rounded transition-colors" onclick="showIntensityData(event, ${index})">▼ 各地の震度詳細を表示</button>`;
             
-        // コメント内容からバッジ（ラベル）を自動生成
         let badgesHtml = '';
         if (data.comment === 'データなし') {
-            // 過去のデータなど、コメント情報自体が存在しない場合
-            badgesHtml += `<span style="background-color: #a4b0be; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 6px; display: inline-block; margin-bottom: 4px;">情報なし</span>`;
+            badgesHtml += `<span class="bg-slate-500 text-white px-2 py-0.5 rounded text-xs font-bold mr-1 inline-block mb-1">情報なし</span>`;
         } else {
-            // 新しいデータ（コメントあり）の場合
             if (data.comment.includes('緊急地震速報')) {
-                badgesHtml += `<span style="background-color: #ff4757; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 6px; display: inline-block; margin-bottom: 4px;">🚨 緊急地震速報</span>`;
+                badgesHtml += `<span class="bg-rose-500 text-white px-2 py-0.5 rounded text-xs font-bold mr-1 inline-block mb-1">🚨 緊急地震速報</span>`;
             }
             if (data.comment.includes('津波の心配はありません')) {
-                badgesHtml += `<span style="background-color: #2ed573; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 6px; display: inline-block; margin-bottom: 4px;">🌊 津波心配なし</span>`;
+                badgesHtml += `<span class="bg-emerald-500 text-white px-2 py-0.5 rounded text-xs font-bold mr-1 inline-block mb-1">🌊 津波心配なし</span>`;
             } else if (data.comment.includes('若干の海面変動')) {
-                badgesHtml += `<span style="background-color: #ffa502; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 6px; display: inline-block; margin-bottom: 4px;">🌊 海面変動あり</span>`;
+                badgesHtml += `<span class="bg-amber-500 text-white px-2 py-0.5 rounded text-xs font-bold mr-1 inline-block mb-1">🌊 海面変動あり</span>`;
             } else if (data.comment.includes('津波警報') || data.comment.includes('津波注意報')) {
-                badgesHtml += `<span style="background-color: #ff4757; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 6px; display: inline-block; margin-bottom: 4px;">⚠️ 津波情報発表中</span>`;
+                badgesHtml += `<span class="bg-rose-500 text-white px-2 py-0.5 rounded text-xs font-bold mr-1 inline-block mb-1">⚠️ 津波情報発表中</span>`;
             }
         }
 
-        // 深さの単位フォーマット（「データなし」の場合はハイフンにする）
         const displayDepth = data.depth === 'データなし' ? '-' : (data.depth === 'ごく浅い' || data.depth === '不明') ? data.depth : `約${data.depth}km`;
-
+        
+        // Tailwind用の色判定
         const colorClass = SHINDO_COLORS[displayIntensity] || 'bg-navy-700 text-white';
 
         return `
@@ -604,7 +597,7 @@ function showDetail(data) {
                 </div>
                 
                 <div class="p-3 bg-navy-800">
-                    ${badgesHtml ? `<div class="mb-3">${badgesHtml}</div>` : ''}
+                    ${badgesHtml ? `<div class="mb-2">${badgesHtml}</div>` : ''}
                     
                     <div class="space-y-1.5 text-sm">
                         <div class="flex justify-between items-center border-b border-navy-700 pb-1.5">
@@ -625,10 +618,12 @@ function showDetail(data) {
                         </div>
                     </div>
 
-                    <div class="mt-4 flex justify-between items-center">
-                        ${buttonHtml.replace('class="intensity-btn"', 'class="bg-navy-700 hover:bg-navy-600 text-slate-200 text-xs py-1.5 px-3 rounded transition-colors"')}
+                    ${buttonHtml}
+                    
+                    <div class="mt-2 text-right">
                         <a href="${searchUrl}" target="_blank" rel="noopener noreferrer" class="text-xs text-accent hover:text-sky-300 underline" onclick="event.stopPropagation();">情報を検索</a>
                     </div>
+
                     <div id="intensity-box-${index}" class="hidden mt-3 pt-3 border-t border-navy-700 text-sm"></div>
                 </div>
             </div>
@@ -639,7 +634,6 @@ function showDetail(data) {
 
     const infoPanel = document.getElementById('info-panel');
     if (infoPanel) {
-        // パネルのスクロール位置を一番上に戻す
         infoPanel.scrollTop = 0;
     }
 }
@@ -647,100 +641,68 @@ function showDetail(data) {
 // 観測点の震度を表示（事前取得済みのデータから検索）
 function showIntensityData(event, index) {
     event.stopPropagation();
-
-    // 表示中のリストから、対象の地震データを取得する（処理を一番上に移動）
     const targetEq = currentDataList[index];
     if (!targetEq) return;
 
-    // この地震がまだ選択（赤いピン）されていなければ、自動的に選択する
     if (!currentSelectedMarker || currentSelectedMarker !== markerMap[index]) {
-        // 3番目の引数(fromPanel)を true にして、リストの再描画を防ぐ
         selectMarker(index, targetEq, true);
     }
 
     const box = document.getElementById(`intensity-box-${index}`);
     const btn = event.target;
 
-    if (intensityRenderTimeout) {
-        clearTimeout(intensityRenderTimeout);
-    }
+    if (intensityRenderTimeout) clearTimeout(intensityRenderTimeout);
 
-    if (box.style.display === 'block') {
-        // ▼ 閉じる時の処理 ▼
-        box.style.display = 'none';
+    if (box.style.display === 'block' || !box.classList.contains('hidden')) {
+        box.classList.add('hidden');
+        box.style.display = ''; 
         btn.textContent = '▼ 各地の震度詳細を表示';
         
-        intensityClusterGroup.clearLayers(); // 震度ピンを消す
-        if (!map.hasLayer(markerClusterGroup)) map.addLayer(markerClusterGroup); // 背景の青ピン再表示
+        intensityClusterGroup.clearLayers();
+        if (!map.hasLayer(markerClusterGroup)) map.addLayer(markerClusterGroup);
         return;
     }
 
-    // ▼ 開く時の処理 ▼
+    box.classList.remove('hidden');
     box.style.display = 'block';
     btn.textContent = '▲ 閉じる';
 
-    // 地図のズーム・移動アニメーション（約250ms）が完全に終わるのを待ってから青ピンを消去する
     setTimeout(() => {
         if (map.hasLayer(markerClusterGroup)) {
             map.removeLayer(markerClusterGroup); 
         }
     }, 400);
 
-
-    // 2. 時間と地名の「複合条件」でAPIデータから検索する
     const targetTime = targetEq.timeMs;
     const targetLocation = targetEq.location;
     const targetIntensity = String(targetEq.rawIntensity);
-
-    const scaleToRawMap = {
-        70: '7', 60: '6+', 55: '6-', 50: '5+', 45: '5-', 40: '4', 30: '3', 20: '2', 10: '1'
-    };
+    const scaleToRawMap = { 70: '7', 60: '6+', 55: '6-', 50: '5+', 45: '5-', 40: '4', 30: '3', 20: '2', 10: '1' };
 
     const matchedData = p2pApiDataList.find(apiData => {
         if (!apiData.earthquake || !apiData.earthquake.hypocenter) return false;
-        
         const apiTime = new Date(apiData.earthquake.time).getTime();
         const timeDiff = Math.abs(apiTime - targetTime);
-
-        // 条件B: 震央地名の一致
         const apiLocation = apiData.earthquake.hypocenter.name || "";
         const isLocationMatch = apiLocation.includes(targetLocation) || targetLocation.includes(apiLocation);
-
-        // 条件A: 基本は2分(120000ms)以内。ただし地名が一致している場合は海外地震の修正を考慮し10分(600000ms)まで許容
         const isTimeMatch = (timeDiff <= 120000) || (isLocationMatch && timeDiff <= 600000);
-
-        // 条件C: 震度が完全に一致していること
         const apiIntensity = scaleToRawMap[apiData.earthquake.maxScale] || "不明";
         const isIntensityMatch = (apiIntensity === targetIntensity);
-
-        // 海外・遠地地震の表記ゆれ対策
         return isTimeMatch && isLocationMatch && isIntensityMatch;
     });
 
     if (!matchedData || !matchedData.points || matchedData.points.length === 0) {
-        box.innerHTML = '<div style="color: #ff4757;">⚠️ 詳細情報が見つかりませんでした。</div>';
+        box.innerHTML = '<div class="text-rose-500 font-bold">⚠️ 詳細情報が見つかりませんでした。</div>';
         return;
     }
 
-    // --- データの集計とHTML生成 ---
     const scaleMap = { 70:'7', 60:'6強', 55:'6弱', 50:'5強', 45:'5弱', 40:'4', 30:'3', 20:'2', 10:'1' };
     const intensityGroups = {};
     
     matchedData.points.forEach(point => {
         const scaleStr = scaleMap[point.scale];
         if (!scaleStr) return;
-        
-        // 震度の箱がなければ作る
-        if (!intensityGroups[scaleStr]) {
-            intensityGroups[scaleStr] = {};
-        }
-        
-        // その震度の中に、都道府県の箱がなければ作る
-        if (!intensityGroups[scaleStr][point.pref]) {
-            intensityGroups[scaleStr][point.pref] = [];
-        }
-        
-        // 都道府県の箱に市区町村（addr）を追加する
+        if (!intensityGroups[scaleStr]) intensityGroups[scaleStr] = {};
+        if (!intensityGroups[scaleStr][point.pref]) intensityGroups[scaleStr][point.pref] = [];
         intensityGroups[scaleStr][point.pref].push(point.addr);
     });
 
@@ -750,12 +712,8 @@ function showIntensityData(event, index) {
     scaleOrder.forEach(scale => {
         if (intensityGroups[scale]) {
             let prefHtml = '';
-            
-            // 都道府県ごとにループを回してHTMLを組み立てる
             for (const [pref, addrs] of Object.entries(intensityGroups[scale])) {
                 const areasStr = addrs.join(', '); 
-                
-                // ★ 「w-[4.5rem] (約72px)」と「shrink-0」を指定し、鹿児島県などの4文字でも絶対にズレないように固定
                 prefHtml += `
                     <div class="flex items-start mb-2 leading-relaxed">
                         <span class="bg-sky-700 text-white text-[11px] py-0.5 rounded-full mr-3 w-[4.5rem] shrink-0 text-center font-bold">
@@ -768,7 +726,7 @@ function showIntensityData(event, index) {
 
             html += `
                 <div class="mb-3 border-b border-navy-700 pb-2 last:border-b-0">
-                    <div class="text-[1.05rem] font-bold mb-2 text-amber-400 border-l-4 border-red-500 pl-2">
+                    <div class="text-[1.05rem] font-bold mb-2 text-amber-400 border-l-4 border-rose-500 pl-2">
                         震度 ${scale}
                     </div>
                     <div class="pl-2">${prefHtml}</div>
@@ -779,15 +737,12 @@ function showIntensityData(event, index) {
 
     box.innerHTML = html;
 
-    // 重たい処理は、ズーム移動が終わるまでストップ
     intensityRenderTimeout = setTimeout(() => {
-        // 1. 背景の青ピンを消す
         if (map.hasLayer(markerClusterGroup)) {
             map.removeLayer(markerClusterGroup); 
         }
-        // 2. 震度マーカーを描画する（以前はタイマーの外にあったものを、中に入れました）
         drawIntensityMarkersOnMap(matchedData.points);
-    }, 400); // 0.4秒後に実行
+    }, 400);
 }
 
 // P2P地震情報APIのデータを裏側で事前取得する
