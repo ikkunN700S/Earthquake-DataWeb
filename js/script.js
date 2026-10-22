@@ -725,7 +725,7 @@ function showIntensityData(event, index) {
             }
 
             html += `
-                <div class="mb-3 border-b border-navy-700 pb-2 last:border-b-0">
+                <div class="mb-3 border-b border-navy-700 pb-2 last:border-b-0 last:mb-0 last:pb-0">
                     <div class="text-[1.05rem] font-bold mb-2 text-amber-400 border-l-4 border-rose-500 pl-2">
                         震度 ${scale}
                     </div>
