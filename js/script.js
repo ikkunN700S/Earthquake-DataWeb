@@ -544,13 +544,10 @@ function getIntensityClass(rawIntensity) {
 }
 
 // 詳細表示
-// 詳細表示
 function showDetail(data) {
     const detailsDiv = document.getElementById('details');
     const placeholder = document.querySelector('.placeholder');
     if (placeholder) placeholder.style.display = 'none';
-
-    const titleHtml = data.length > 1 ? '<h3 class="text-sm text-slate-400 mb-3 pb-1 border-b border-navy-700">直近の地震情報</h3>' : '';
 
     const cardsHtml = data.map((data) => {
         const index = data.listIndex;
@@ -586,7 +583,7 @@ function showDetail(data) {
             }
         }
 
-        const displayDepth = data.depth === 'データなし' ? '-' : (data.depth === 'ごく浅い' || data.depth === '不明') ? data.depth : `約${data.depth}km`;
+        const displayDepth = data.depth === 'データなし' ? '-' : (data.depth === 'ごく浅い' || data.depth === '不明') ? data.depth : `${data.depth}km`;
         
         // Tailwind用の色判定
         const colorClass = SHINDO_COLORS[displayIntensity] || 'bg-navy-700 text-white';
@@ -607,12 +604,12 @@ function showDetail(data) {
                             <strong class="text-slate-200">${new Date(data.time).toLocaleString('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })}</strong>
                         </div>
                         <div class="flex justify-between items-center border-b border-navy-700 pb-1.5">
-                            <span class="text-slate-400">震源地</span>
+                            <span class="text-slate-400">震央</span>
                             <strong class="text-slate-200">${data.location}</strong>
                         </div>
                         <div class="flex justify-between items-center border-b border-navy-700 pb-1.5">
-                            <span class="text-slate-400">規模 (M)</span>
-                            <strong class="text-slate-200">${data.mag.toFixed(1)}</strong>
+                            <span class="text-slate-400">規模</span>
+                            <strong class="text-slate-200">M ${data.mag.toFixed(1)}</strong>
                         </div>
                         <div class="flex justify-between items-center pb-1">
                             <span class="text-slate-400">深さ</span>
@@ -632,7 +629,7 @@ function showDetail(data) {
         `;
     }).join('');
 
-    detailsDiv.innerHTML = titleHtml + cardsHtml;
+    detailsDiv.innerHTML = cardsHtml;
 
     const infoPanel = document.getElementById('info-panel');
     if (infoPanel) {
