@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main"] # 対象のブランチ名
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
