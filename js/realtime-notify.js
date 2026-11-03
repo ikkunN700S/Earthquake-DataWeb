@@ -117,13 +117,59 @@ function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
         <div class="realtime-popup-content">${content}</div>
     `;
 
+    // 「左スワイプで消去」するタッチイベント処理
+    let startX = 0;
+    let currentX = 0;
+    let isDragging = false;
+
+    popup.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        currentX = startX;
+        isDragging = true;
+        popup.style.transition = 'none'; // ドラッグ中のCSSアニメーションを無効化して指に追従させる
+    }, { passive: true });
+
+    popup.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        currentX = e.touches[0].clientX;
+        const deltaX = currentX - startX;
+
+        // 左方向へのスワイプのみ許可
+        if (deltaX < 0) {
+            popup.style.transform = `translateX(${deltaX}px)`;
+            popup.style.opacity = 1 - (Math.abs(deltaX) / 150); // スワイプ量に応じて徐々に透明にする
+        }
+    }, { passive: true });
+
+    popup.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        const deltaX = currentX - startX;
+
+        // 指を離した時はアニメーションを再び有効化
+        popup.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
+
+        // 50px以上左にスワイプされていたら完全に画面外へ飛ばして削除
+        if (deltaX < -50) {
+            popup.style.transform = 'translateX(-100%)';
+            popup.style.opacity = '0';
+            setTimeout(() => {
+                if (popup.parentElement) popup.remove();
+            }, 300); // アニメーション終了後にDOMから削除
+        } else {
+            // スワイプ量が足りない場合は元の位置に弾き戻す
+            popup.style.transform = 'translateX(0)';
+            popup.style.opacity = '1';
+        }
+    });
+
     container.prepend(popup);
 
-    if(duration > 0) {
+    if (duration > 0) {
         setTimeout(() => {
             if (popup.parentElement) {
-                popup.style.opacity = '0';
                 popup.style.transition = 'opacity 0.5s';
+                popup.style.opacity = '0';
                 setTimeout(() => popup.remove(), 500);
             }
         }, duration);
