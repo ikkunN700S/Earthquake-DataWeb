@@ -7,8 +7,8 @@ let currentWs = null;
 let reconnectTimeoutId = null; 
 let lastWsReconnectTime = 0; 
 let pollingIntervalId = null; 
-let burstPollingIntervalId = null; // ★追加: 緊急バースト用
-let burstTimeoutId = null;         // ★追加: 緊急バースト用
+let burstPollingIntervalId = null;
+let burstTimeoutId = null;
 const processedEventIds = new Set(); 
 
 function updateWebSocketStatus(state) {
@@ -70,12 +70,10 @@ function processIncomingData(data) {
     }
 
     if (data.time) {
-        // ★修正: 日本時間(+09:00)として厳密にパースさせ、環境による時間のズレを防ぐ
         const jstIso = data.time.replace(/\//g, '-').replace(' ', 'T') + '+09:00';
         const dataTimeMs = new Date(jstIso).getTime();
         const nowMs = Date.now();
         
-        // ★修正: PCの時計が少し進んでいるだけで弾かれるのを防ぐため、許容範囲を15分に拡大
         if (nowMs - dataTimeMs > 900000) {
             processedEventIds.add(data.id);
             return;
@@ -100,10 +98,10 @@ function processIncomingData(data) {
                 p2pOldestTimeMs = new Date(jstOldest).getTime() - 300000;
             }
         }
-    } else if (data.code === 556 && data.eew && !data.eew.isCancel) {
-        handleEEWEvent(data.eew);
-    } else if (data.code === 552 && data.tsunami) {
-        handleTsunamiEvent(data.tsunami);
+    } else if (data.code === 556 && !data.cancelled) {
+        handleEEWEvent(data);
+    } else if (data.code === 552) {
+        handleTsunamiEvent(data);
     }
 }
 
@@ -134,7 +132,6 @@ function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
 
 async function fallbackPolling() {
     try {
-        // ★修正: jma/quakeからhistoryに変更し、EEWや津波もバックアップで拾えるようにした
         const res = await fetch('https://api.p2pquake.net/v2/history?limit=10');
         
         if (!res.ok) {
@@ -175,7 +172,6 @@ function connectRealtimeAPI() {
         updateWebSocketStatus('realtime'); 
         reconnectAttempts = 0; 
         
-        // ★修正: 接続成功時にすべてのバックアップタイマーを確実に停止
         if (pollingIntervalId) { clearInterval(pollingIntervalId); pollingIntervalId = null; }
         if (burstPollingIntervalId) { clearInterval(burstPollingIntervalId); burstPollingIntervalId = null; }
         if (burstTimeoutId) { clearTimeout(burstTimeoutId); burstTimeoutId = null; }
@@ -195,7 +191,6 @@ function connectRealtimeAPI() {
 
         console.log('⚡ 通信切断を検知。即座にバックアップ取得を行い、3分間は10秒間隔で監視します');
         
-        // ★修正: サーバー負荷で落ちた場合、即座に10秒間隔のバースト通信を開始する
         fallbackPolling();
         burstPollingIntervalId = setInterval(fallbackPolling, 10000);
 
