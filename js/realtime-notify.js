@@ -133,64 +133,113 @@ function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
     const container = document.getElementById('realtime-notification-container');
     if (!container) return;
 
+    // 通知コンテナをステータスバッジ(10000)より手前(20000)に
+    container.style.zIndex = '20000';
+    if (window.getComputedStyle(container).position === 'static') {
+        container.style.position = 'relative'; // z-indexを効かせるため
+    }
+
     const popup = document.createElement('div');
     popup.className = `realtime-popup ${typeClass}`;
+    
+    // ポップアップ自体も最前面に設定し、ドラッグ時のテキスト選択・スクロールを防止
+    popup.style.position = 'relative';
+    popup.style.zIndex = '20000';
+    popup.style.userSelect = 'none';
+    
     popup.innerHTML = `
-        <div class="popup-close-btn" onclick="this.parentElement.remove()">✖</div>
+        <div class="popup-close-btn" style="position: relative; z-index: 20001;">✖</div>
         <div class="realtime-popup-title">${title}</div>
         <div class="realtime-popup-content">${content}</div>
     `;
 
-    // 「左スワイプで消去」するタッチイベント処理
+    const closePopupWithAnimation = () => {
+        const currentTransform = popup.style.transform || 'translateX(0px)';
+        const currentOpacity = popup.style.opacity || '1';
+
+        const animation = popup.animate([
+            { transform: currentTransform, opacity: currentOpacity },
+            { transform: 'translateX(-100%)', opacity: 0 }
+        ], {
+            duration: 300,
+            easing: 'ease-in-out',
+            fill: 'forwards'
+        });
+
+        // アニメーションが完全に終わってからDOMを削除
+        animation.onfinish = () => {
+            if (popup.parentElement) popup.remove();
+        };
+    };
+
+    const closeBtn = popup.querySelector('.popup-close-btn');
+    closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closePopupWithAnimation();
+    });
+
+    // 「左スワイプで消去」するマウス・タッチ両対応のイベント処理
     let startX = 0;
     let currentX = 0;
     let isDragging = false;
 
-    popup.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].clientX;
+    popup.addEventListener('pointerdown', (e) => {
+        if (e.target === closeBtn) return; // ✖ボタンを押した時はドラッグ判定しない
+        startX = e.clientX;
         currentX = startX;
         isDragging = true;
-        popup.style.transition = 'none'; 
-    }, { passive: true });
+        popup.setPointerCapture(e.pointerId); 
+    });
 
-    popup.addEventListener('touchmove', (e) => {
+    popup.addEventListener('pointermove', (e) => {
         if (!isDragging) return;
-        currentX = e.touches[0].clientX;
+        currentX = e.clientX;
         const deltaX = currentX - startX;
 
+        // 左方向へのみ移動を許可
         if (deltaX < 0) {
             popup.style.transform = `translateX(${deltaX}px)`;
             popup.style.opacity = 1 - (Math.abs(deltaX) / 150); 
         }
-    }, { passive: true });
+    });
 
-    popup.addEventListener('touchend', () => {
+    const endDrag = (e) => {
         if (!isDragging) return;
         isDragging = false;
         const deltaX = currentX - startX;
 
-        popup.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
-
         if (deltaX < -50) {
-            popup.style.transform = 'translateX(-100%)';
-            popup.style.opacity = '0';
-            setTimeout(() => {
-                if (popup.parentElement) popup.remove();
-            }, 300);
+            // 50px以上左に引っ張っていたら、そのまま左へ流して消す
+            closePopupWithAnimation();
         } else {
-            popup.style.transform = 'translateX(0)';
-            popup.style.opacity = '1';
+            // スワイプ量が足りない場合は、弾き戻るアニメーション
+            const snapBack = popup.animate([
+                { transform: `translateX(${deltaX}px)`, opacity: popup.style.opacity },
+                { transform: 'translateX(0px)', opacity: 1 }
+            ], {
+                duration: 200,
+                easing: 'ease-out',
+                fill: 'forwards'
+            });
+            
+            snapBack.onfinish = () => {
+                popup.style.transform = 'translateX(0px)';
+                popup.style.opacity = '1';
+            };
         }
-    });
+        popup.releasePointerCapture(e.pointerId);
+    };
+
+    popup.addEventListener('pointerup', endDrag);
+    popup.addEventListener('pointercancel', endDrag);
 
     container.prepend(popup);
 
+    // 時間経過による自動消去
     if (duration > 0) {
         setTimeout(() => {
             if (popup.parentElement) {
-                popup.style.transition = 'opacity 0.5s';
-                popup.style.opacity = '0';
-                setTimeout(() => popup.remove(), 500);
+                closePopupWithAnimation();
             }
         }, duration);
     }
@@ -198,7 +247,7 @@ function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
 
 async function fallbackPolling() {
     try {
-        const res = await fetch('https://api.p2pquake.net/v2/history?limit=10');
+        const res = await fetch('https://api.p2pquake.net/v2/history?codes=551&codes=552&codes=556&limit=100');
 
         if (!res.ok) {
             if (pollingIntervalId || burstPollingIntervalId) updateWebSocketStatus('offline');
