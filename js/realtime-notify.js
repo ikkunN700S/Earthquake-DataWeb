@@ -133,23 +133,22 @@ function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
     const container = document.getElementById('realtime-notification-container');
     if (!container) return;
 
-    // 通知コンテナをステータスバッジ(10000)より手前(20000)に
     container.style.zIndex = '20000';
     if (window.getComputedStyle(container).position === 'static') {
-        container.style.position = 'relative'; // z-indexを効かせるため
+        container.style.position = 'relative';
     }
 
     const popup = document.createElement('div');
     popup.className = `realtime-popup ${typeClass}`;
     
-    // ポップアップ自体も最前面に設定し、ドラッグ時のテキスト選択・スクロールを防止
     popup.style.position = 'relative';
     popup.style.zIndex = '20000';
     popup.style.userSelect = 'none';
+    popup.style.touchAction = 'pan-y';
     
     popup.innerHTML = `
-        <div class="popup-close-btn" style="position: relative; z-index: 20001;">✖</div>
-        <div class="realtime-popup-title">${title}</div>
+        <div class="popup-close-btn" style="position: absolute; top: 10px; right: 15px; z-index: 20001; cursor: pointer; font-size: 16px;">✖</div>
+        <div class="realtime-popup-title" style="padding-right: 20px;">${title}</div>
         <div class="realtime-popup-content">${content}</div>
     `;
 
@@ -166,7 +165,6 @@ function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
             fill: 'forwards'
         });
 
-        // アニメーションが完全に終わってからDOMを削除
         animation.onfinish = () => {
             if (popup.parentElement) popup.remove();
         };
@@ -178,16 +176,18 @@ function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
         closePopupWithAnimation();
     });
 
-    // 「左スワイプで消去」するマウス・タッチ両対応のイベント処理
     let startX = 0;
     let currentX = 0;
     let isDragging = false;
 
     popup.addEventListener('pointerdown', (e) => {
-        if (e.target === closeBtn) return; // ✖ボタンを押した時はドラッグ判定しない
+        if (e.target === closeBtn) return;
         startX = e.clientX;
         currentX = startX;
         isDragging = true;
+        
+        popup.style.transition = 'none'; 
+        
         popup.setPointerCapture(e.pointerId); 
     });
 
@@ -196,7 +196,6 @@ function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
         currentX = e.clientX;
         const deltaX = currentX - startX;
 
-        // 左方向へのみ移動を許可
         if (deltaX < 0) {
             popup.style.transform = `translateX(${deltaX}px)`;
             popup.style.opacity = 1 - (Math.abs(deltaX) / 150); 
@@ -206,15 +205,15 @@ function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
     const endDrag = (e) => {
         if (!isDragging) return;
         isDragging = false;
-        const deltaX = currentX - startX;
+        let deltaX = currentX - startX;
 
         if (deltaX < -50) {
-            // 50px以上左に引っ張っていたら、そのまま左へ流して消す
             closePopupWithAnimation();
         } else {
-            // スワイプ量が足りない場合は、弾き戻るアニメーション
+            if (deltaX > 0) deltaX = 0;
+
             const snapBack = popup.animate([
-                { transform: `translateX(${deltaX}px)`, opacity: popup.style.opacity },
+                { transform: `translateX(${deltaX}px)`, opacity: popup.style.opacity || 1 },
                 { transform: 'translateX(0px)', opacity: 1 }
             ], {
                 duration: 200,
@@ -225,6 +224,7 @@ function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
             snapBack.onfinish = () => {
                 popup.style.transform = 'translateX(0px)';
                 popup.style.opacity = '1';
+                popup.style.transition = ''; 
             };
         }
         popup.releasePointerCapture(e.pointerId);
@@ -235,7 +235,6 @@ function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
 
     container.prepend(popup);
 
-    // 時間経過による自動消去
     if (duration > 0) {
         setTimeout(() => {
             if (popup.parentElement) {
