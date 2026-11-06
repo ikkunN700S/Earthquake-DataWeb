@@ -2,16 +2,25 @@
 // リアルタイム地震情報 受信・ポップアップ機能
 // ==========================================
 
-let reconnectAttempts = 0;
 let currentWs = null; 
-let reconnectTimeoutId = null; 
+let wsConnectionTimeoutId = null; // 接続タイムアウト用のタイマー
 let lastWsReconnectTime = 0; 
 let pollingIntervalId = null; 
 let burstPollingIntervalId = null;
 let burstTimeoutId = null;
+let currentConnectionState = 'offline'; // 現在のステータスを管理
 const processedEventIds = new Set(); 
 
+// バックアップ通信が動いていなければ動かす補助関数
+function ensureFallbackRunning() {
+    if (!pollingIntervalId && !burstPollingIntervalId) {
+        fallbackPolling();
+        pollingIntervalId = setInterval(fallbackPolling, 60000);
+    }
+}
+
 function updateWebSocketStatus(state) {
+    currentConnectionState = state; // ステータスを保持
     let statusEl = document.getElementById('websocket-status-badge');
     
     if (!statusEl) {
@@ -30,7 +39,7 @@ function updateWebSocketStatus(state) {
             const now = Date.now();
             if (now - lastWsReconnectTime < 10000) {
                 const timeLeft = Math.ceil((10000 - (now - lastWsReconnectTime)) / 1000);
-                console.log(`⏳ 短時間での連続アクセスはできません。あと ${timeLeft} 秒お待ちください。`);
+                console.log(`短時間での連続アクセスはできません。あと ${timeLeft} 秒お待ちください。`);
                 statusEl.style.transform = 'translateX(-5px)';
                 setTimeout(() => statusEl.style.transform = 'translateX(5px)', 50);
                 setTimeout(() => statusEl.style.transform = 'translateX(0)', 100);
@@ -39,8 +48,23 @@ function updateWebSocketStatus(state) {
             lastWsReconnectTime = now;
             statusEl.style.transform = 'scale(0.95)';
             setTimeout(() => statusEl.style.transform = 'scale(1)', 100);
-            console.log('🔄 WebSocketの再接続を強制実行します');
-            connectRealtimeAPI();
+
+            // 接続試行中またはリアルタイム通信中なら「中断/切断」し、バックアップ通信に切り替える
+            if (currentConnectionState === 'connecting' || currentConnectionState === 'realtime') {
+                console.log('リアルタイム通信を停止し、手動でバックアップ通信に切り替えます');
+                if (currentWs) {
+                    currentWs.onclose = null;
+                    currentWs.close();
+                    currentWs = null;
+                }
+                if (wsConnectionTimeoutId) clearTimeout(wsConnectionTimeoutId);
+                
+                updateWebSocketStatus('fallback');
+                ensureFallbackRunning();
+            } else {
+                console.log('WebSocketの再接続を手動実行します');
+                connectRealtimeAPI();
+            }
         };
 
         document.body.appendChild(statusEl);
@@ -73,13 +97,13 @@ function processIncomingData(data) {
         const jstIso = data.time.replace(/\//g, '-').replace(' ', 'T') + '+09:00';
         const dataTimeMs = new Date(jstIso).getTime();
         const nowMs = Date.now();
-        
+
         if (nowMs - dataTimeMs > 900000) {
             processedEventIds.add(data.id);
             return;
         }
     }
-    
+
     processedEventIds.add(data.id);
     if (processedEventIds.size > 1000) {
         const firstItem = processedEventIds.values().next().value;
@@ -88,7 +112,7 @@ function processIncomingData(data) {
 
     if (data.code === 551 && data.earthquake) {
         handleEarthquakeEvent(data.earthquake);
-        
+
         if (typeof p2pApiDataList !== 'undefined') {
             p2pApiDataList.unshift(data);
             if (p2pApiDataList.length > 100) p2pApiDataList.pop();
@@ -109,68 +133,112 @@ function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
     const container = document.getElementById('realtime-notification-container');
     if (!container) return;
 
+    container.style.zIndex = '20000';
+    if (window.getComputedStyle(container).position === 'static') {
+        container.style.position = 'relative';
+    }
+
     const popup = document.createElement('div');
     popup.className = `realtime-popup ${typeClass}`;
+    
+    popup.style.position = 'relative';
+    popup.style.zIndex = '20000';
+    popup.style.userSelect = 'none';
+    popup.style.touchAction = 'pan-y';
+    
     popup.innerHTML = `
-        <div class="popup-close-btn" onclick="this.parentElement.remove()">✖</div>
-        <div class="realtime-popup-title">${title}</div>
+        <div class="popup-close-btn" style="position: absolute; top: 10px; right: 15px; z-index: 20001; cursor: pointer; font-size: 16px;">✖</div>
+        <div class="realtime-popup-title" style="padding-right: 20px;">${title}</div>
         <div class="realtime-popup-content">${content}</div>
     `;
 
-    // 「左スワイプで消去」するタッチイベント処理
+    const closePopupWithAnimation = () => {
+        const currentTransform = popup.style.transform || 'translateX(0px)';
+        const currentOpacity = popup.style.opacity || '1';
+
+        const animation = popup.animate([
+            { transform: currentTransform, opacity: currentOpacity },
+            { transform: 'translateX(-100%)', opacity: 0 }
+        ], {
+            duration: 300,
+            easing: 'ease-in-out',
+            fill: 'forwards'
+        });
+
+        animation.onfinish = () => {
+            if (popup.parentElement) popup.remove();
+        };
+    };
+
+    const closeBtn = popup.querySelector('.popup-close-btn');
+    closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closePopupWithAnimation();
+    });
+
     let startX = 0;
     let currentX = 0;
     let isDragging = false;
 
-    popup.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].clientX;
+    popup.addEventListener('pointerdown', (e) => {
+        if (e.target === closeBtn) return;
+        startX = e.clientX;
         currentX = startX;
         isDragging = true;
-        popup.style.transition = 'none'; // ドラッグ中のCSSアニメーションを無効化して指に追従させる
-    }, { passive: true });
+        
+        popup.style.transition = 'none'; 
+        
+        popup.setPointerCapture(e.pointerId); 
+    });
 
-    popup.addEventListener('touchmove', (e) => {
+    popup.addEventListener('pointermove', (e) => {
         if (!isDragging) return;
-        currentX = e.touches[0].clientX;
+        currentX = e.clientX;
         const deltaX = currentX - startX;
 
-        // 左方向へのスワイプのみ許可
         if (deltaX < 0) {
             popup.style.transform = `translateX(${deltaX}px)`;
-            popup.style.opacity = 1 - (Math.abs(deltaX) / 150); // スワイプ量に応じて徐々に透明にする
-        }
-    }, { passive: true });
-
-    popup.addEventListener('touchend', () => {
-        if (!isDragging) return;
-        isDragging = false;
-        const deltaX = currentX - startX;
-
-        // 指を離した時はアニメーションを再び有効化
-        popup.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
-
-        // 50px以上左にスワイプされていたら完全に画面外へ飛ばして削除
-        if (deltaX < -50) {
-            popup.style.transform = 'translateX(-100%)';
-            popup.style.opacity = '0';
-            setTimeout(() => {
-                if (popup.parentElement) popup.remove();
-            }, 300); // アニメーション終了後にDOMから削除
-        } else {
-            // スワイプ量が足りない場合は元の位置に弾き戻す
-            popup.style.transform = 'translateX(0)';
-            popup.style.opacity = '1';
+            popup.style.opacity = 1 - (Math.abs(deltaX) / 150); 
         }
     });
+
+    const endDrag = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        let deltaX = currentX - startX;
+
+        if (deltaX < -50) {
+            closePopupWithAnimation();
+        } else {
+            if (deltaX > 0) deltaX = 0;
+
+            const snapBack = popup.animate([
+                { transform: `translateX(${deltaX}px)`, opacity: popup.style.opacity || 1 },
+                { transform: 'translateX(0px)', opacity: 1 }
+            ], {
+                duration: 200,
+                easing: 'ease-out',
+                fill: 'forwards'
+            });
+            
+            snapBack.onfinish = () => {
+                popup.style.transform = 'translateX(0px)';
+                popup.style.opacity = '1';
+                popup.style.transition = ''; 
+            };
+        }
+        popup.releasePointerCapture(e.pointerId);
+    };
+
+    popup.addEventListener('pointerup', endDrag);
+    popup.addEventListener('pointercancel', endDrag);
 
     container.prepend(popup);
 
     if (duration > 0) {
         setTimeout(() => {
             if (popup.parentElement) {
-                popup.style.transition = 'opacity 0.5s';
-                popup.style.opacity = '0';
-                setTimeout(() => popup.remove(), 500);
+                closePopupWithAnimation();
             }
         }, duration);
     }
@@ -178,17 +246,17 @@ function showRealtimePopup(title, content, typeClass = '', duration = 60000) {
 
 async function fallbackPolling() {
     try {
-        const res = await fetch('https://api.p2pquake.net/v2/history?limit=10');
-        
+        const res = await fetch('https://api.p2pquake.net/v2/history?codes=551&codes=552&codes=556&limit=100');
+
         if (!res.ok) {
             if (pollingIntervalId || burstPollingIntervalId) updateWebSocketStatus('offline');
             return;
         }
-        
+
         if (pollingIntervalId || burstPollingIntervalId) {
             updateWebSocketStatus('fallback');
         }
-        
+
         const dataList = await res.json();
         for (let i = dataList.length - 1; i >= 0; i--) {
             processIncomingData(dataList[i]);
@@ -205,19 +273,38 @@ function connectRealtimeAPI() {
         currentWs.close();
         currentWs = null;
     }
-    if (reconnectTimeoutId) {
-        clearTimeout(reconnectTimeoutId);
-        reconnectTimeoutId = null;
+    if (wsConnectionTimeoutId) {
+        clearTimeout(wsConnectionTimeoutId);
+        wsConnectionTimeoutId = null;
     }
 
     updateWebSocketStatus('connecting');
+    
+    // 接続試行中もバックアップ通信を継続する
+    ensureFallbackRunning();
+
     currentWs = new WebSocket('wss://api.p2pquake.net/v2/ws');
 
+    // 5秒以内に接続が確立しなかった場合はタイムアウトとして切断
+    wsConnectionTimeoutId = setTimeout(() => {
+        if (currentWs && currentWs.readyState !== WebSocket.OPEN) {
+            console.warn('WebSocket接続タイムアウト。バックアップ通信へ切り替えます');
+            currentWs.onclose = null; 
+            currentWs.close();
+            currentWs = null;
+            
+            updateWebSocketStatus('fallback');
+            ensureFallbackRunning();
+        }
+    }, 5000);
+
     currentWs.onopen = () => {
-        console.log('📶 リアルタイム地震速報サーバーに接続しました');
+        console.log('リアルタイム地震速報サーバーに接続しました');
         updateWebSocketStatus('realtime'); 
-        reconnectAttempts = 0; 
         
+        if (wsConnectionTimeoutId) clearTimeout(wsConnectionTimeoutId);
+
+        // 接続が完全に確立してはじめてバックアップ通信を停止する
         if (pollingIntervalId) { clearInterval(pollingIntervalId); pollingIntervalId = null; }
         if (burstPollingIntervalId) { clearInterval(burstPollingIntervalId); burstPollingIntervalId = null; }
         if (burstTimeoutId) { clearTimeout(burstTimeoutId); burstTimeoutId = null; }
@@ -230,29 +317,25 @@ function connectRealtimeAPI() {
 
     currentWs.onclose = () => {
         updateWebSocketStatus('fallback');
-        
+        if (wsConnectionTimeoutId) clearTimeout(wsConnectionTimeoutId);
+
         if (pollingIntervalId) { clearInterval(pollingIntervalId); pollingIntervalId = null; }
         if (burstPollingIntervalId) { clearInterval(burstPollingIntervalId); burstPollingIntervalId = null; }
         if (burstTimeoutId) { clearTimeout(burstTimeoutId); burstTimeoutId = null; }
 
-        console.log('⚡ 通信切断を検知。即座にバックアップ取得を行い、3分間は10秒間隔で監視します');
-        
+        console.log('バックアップ通信を行います(3分間は10秒間隔)');
+
         fallbackPolling();
         burstPollingIntervalId = setInterval(fallbackPolling, 10000);
 
         burstTimeoutId = setTimeout(() => {
-            console.log('🔄 緊急監視モード終了。通常の1分間隔バックアップに移行します');
+            console.log('通常バックアップ通信に切り替えます');
             clearInterval(burstPollingIntervalId);
             burstPollingIntervalId = null;
             pollingIntervalId = setInterval(fallbackPolling, 60000);
         }, 180000);
-
-        const delay = Math.min(5000 * Math.pow(2, reconnectAttempts), 60000);
-        console.warn(`⚠️ ${delay / 1000}秒後にWebSocket再接続を試みます...`);
-        reconnectAttempts++;
-        reconnectTimeoutId = setTimeout(connectRealtimeAPI, delay);
     };
-    
+
     currentWs.onerror = (error) => {
         console.error('WebSocket エラー:', error);
     };
@@ -260,14 +343,14 @@ function connectRealtimeAPI() {
 
 function handleEarthquakeEvent(eq) {
     if (!eq) return;
-    
+
     const time = eq.time ? eq.time.replace(/:\d{2}$/, '') : '不明';
     const name = (eq.hypocenter && eq.hypocenter.name) ? eq.hypocenter.name : '震源調査中';
     const scaleNum = eq.maxScale;
-    
+
     const scaleMap = { 70:'7', 60:'6強', 55:'6弱', 50:'5強', 45:'5弱', 40:'4', 30:'3', 20:'2', 10:'1' };
     const scaleStr = scaleMap[scaleNum] || (scaleNum === -1 ? '調査中' : '不明');
-    
+
     let magnitude = "不明";
     if (eq.hypocenter && eq.hypocenter.magnitude !== -1) {
         magnitude = `M${eq.hypocenter.magnitude.toFixed(1)}`;
@@ -289,7 +372,7 @@ function handleEarthquakeEvent(eq) {
     let typeClass = '';
     if (scaleNum >= 45) typeClass = 'intensity-high';
     else if (scaleNum >= 30) typeClass = 'intensity-mid';
-    
+
     let tsunamiInfo = '';
     switch (eq.domesticTsunami) {
         case 'Warning': tsunamiInfo = '<div class="tsunami-warning-text">⚠️ 津波警報等発表中</div>'; break;
@@ -305,7 +388,7 @@ function handleEarthquakeEvent(eq) {
         ${tsunamiInfo}
         <span style="font-size: 11px; color: #a4b0be; margin-top: 4px; display: block;">発生時刻: ${time}</span>
     `;
-    
+
     let displayTime = 60000;
     if (scaleNum >= 45 || eq.domesticTsunami === 'Warning') {
         displayTime = 0;
@@ -350,7 +433,7 @@ function handleTsunamiEvent(data) {
     data.areas.forEach(area => {
         const gradeInfo = gradeMap[area.grade] || { label: '不明', color: '#fff', bg: 'transparent' };
         const immediateMark = area.immediate ? '<span style="color:#ff4757; font-weight:bold;">[到達中]</span> ' : '';
-        
+
         areaHtml += `
             <div style="margin-bottom: 4px; padding: 4px; background: ${gradeInfo.bg}; border-left: 3px solid ${gradeInfo.color};">
                 <strong style="color: ${gradeInfo.color}; display: inline-block; width: 80px;">${gradeInfo.label}</strong>
@@ -378,6 +461,6 @@ document.addEventListener('DOMContentLoaded', () => {
         container.className = 'realtime-notification-container';
         document.body.appendChild(container);
     }
-    
+
     connectRealtimeAPI();
 });
