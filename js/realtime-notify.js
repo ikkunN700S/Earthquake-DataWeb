@@ -39,7 +39,7 @@ function updateWebSocketStatus(state) {
             const now = Date.now();
             if (now - lastWsReconnectTime < 10000) {
                 const timeLeft = Math.ceil((10000 - (now - lastWsReconnectTime)) / 1000);
-                console.log(`⏳ 短時間での連続アクセスはできません。あと ${timeLeft} 秒お待ちください。`);
+                console.log(`短時間での連続アクセスはできません。あと ${timeLeft} 秒お待ちください。`);
                 statusEl.style.transform = 'translateX(-5px)';
                 setTimeout(() => statusEl.style.transform = 'translateX(5px)', 50);
                 setTimeout(() => statusEl.style.transform = 'translateX(0)', 100);
@@ -49,11 +49,11 @@ function updateWebSocketStatus(state) {
             statusEl.style.transform = 'scale(0.95)';
             setTimeout(() => statusEl.style.transform = 'scale(1)', 100);
 
-            // 接続試行中なら「中断」し、それ以外なら「再接続」する
-            if (currentConnectionState === 'connecting') {
-                console.log('🛑 接続試行を中断し、バックアップ通信に切り替えます');
+            // 接続試行中またはリアルタイム通信中なら「中断/切断」し、バックアップ通信に切り替える
+            if (currentConnectionState === 'connecting' || currentConnectionState === 'realtime') {
+                console.log('リアルタイム通信を停止し、手動でバックアップ通信に切り替えます');
                 if (currentWs) {
-                    currentWs.onclose = null; // oncloseイベントの暴発を防ぐ
+                    currentWs.onclose = null;
                     currentWs.close();
                     currentWs = null;
                 }
@@ -62,7 +62,7 @@ function updateWebSocketStatus(state) {
                 updateWebSocketStatus('fallback');
                 ensureFallbackRunning();
             } else {
-                console.log('🔄 WebSocketの再接続を手動実行します');
+                console.log('WebSocketの再接続を手動実行します');
                 connectRealtimeAPI();
             }
         };
@@ -240,7 +240,7 @@ function connectRealtimeAPI() {
     // 5秒以内に接続が確立しなかった場合はタイムアウトとして切断
     wsConnectionTimeoutId = setTimeout(() => {
         if (currentWs && currentWs.readyState !== WebSocket.OPEN) {
-            console.warn('⚠️ WebSocket接続タイムアウト。即座にバックアップ通信へ切り替えます');
+            console.warn('WebSocket接続タイムアウト。バックアップ通信へ切り替えます');
             currentWs.onclose = null; 
             currentWs.close();
             currentWs = null;
@@ -251,7 +251,7 @@ function connectRealtimeAPI() {
     }, 5000);
 
     currentWs.onopen = () => {
-        console.log('📶 リアルタイム地震速報サーバーに接続しました');
+        console.log('リアルタイム地震速報サーバーに接続しました');
         updateWebSocketStatus('realtime'); 
         
         if (wsConnectionTimeoutId) clearTimeout(wsConnectionTimeoutId);
@@ -275,13 +275,13 @@ function connectRealtimeAPI() {
         if (burstPollingIntervalId) { clearInterval(burstPollingIntervalId); burstPollingIntervalId = null; }
         if (burstTimeoutId) { clearTimeout(burstTimeoutId); burstTimeoutId = null; }
 
-        console.log('⚡ 通信切断を検知。即座にバックアップ取得を行い、3分間は10秒間隔で監視します');
+        console.log('バックアップ通信を行います(3分間は10秒間隔)');
 
         fallbackPolling();
         burstPollingIntervalId = setInterval(fallbackPolling, 10000);
 
         burstTimeoutId = setTimeout(() => {
-            console.log('🔄 緊急監視モード終了。通常の1分間隔バックアップに移行します');
+            console.log('通常バックアップ通信に切り替えます');
             clearInterval(burstPollingIntervalId);
             burstPollingIntervalId = null;
             pollingIntervalId = setInterval(fallbackPolling, 60000);
