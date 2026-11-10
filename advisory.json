@@ -1,3 +1,10 @@
-{
-  "active": false
-}
+[
+  {
+    "active": false,
+    "id": "nankai"
+  },
+  {
+    "active": false,
+    "id": "hokkaido"
+  }
+]
