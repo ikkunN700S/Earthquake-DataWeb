@@ -22,17 +22,17 @@ async function main() {
                 const time = timeMatch[1].trim();
 
                 // 「南海トラフ」または「北海道・三陸沖後発地震注意情報」を検知
-                if (title.includes('南海トラフ') || title.includes('北海道・三陸沖後発地震注意情報')) {
-                    
+                if (title.includes('南海トラフ') || title.includes('北海道・三陸沖後発地震注意情報')) {                    
                     if (
-                        title.includes('調査終了') ||                     // 臨時情報（調査終了）を検知
-                        content.includes('呼びかけ等していました') ||       // 解説情報での期間終了（過去形）を検知
-                        content.includes('特別な注意の呼びかけは終了') || // 北海道三陸沖などでの明確な終了フレーズ
-                        content.includes('通常どおりの生活')              // 平常復帰フレーズ
+                        title.includes('調査終了') ||                         // 南海トラフ臨時情報（調査終了）
+                        title.includes('期間の終了') ||                       // 北海道三陸沖（呼び掛けの期間の終了について）
+                        content.includes('呼びかけ等していました') ||         // 南海トラフ（過去形による終了宣言）
+                        content.match(/特別な注意(.*?)終了/) ||               // 北海道三陸沖（送り仮名や表現のブレを吸収）
+                        content.includes('通常どおりの生活')                  // 共通の平常復帰フレーズ
                     ) {
                         newAdvisory = { active: false };
                     } else {
-                        // 発表中（調査中・警戒・注意など）ならそのまま保存
+                        // 発表中（警戒・注意など）ならそのまま保存
                         newAdvisory = { active: true, title: title, content: content, time: time };
                     }
                     break; // 最新の1件で判定を確定させる
