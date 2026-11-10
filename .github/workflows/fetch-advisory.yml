@@ -1,0 +1,32 @@
+name: Fetch JMA Special Advisory
+
+on:
+  schedule:
+    - cron: "*/30 * * * *" # 30分ごとに実行
+  workflow_dispatch: # 手動実行用ボタン
+
+permissions:
+  contents: write
+
+jobs:
+  update-advisory:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Run Advisory Check
+        run: node ./js/check-advisory.js
+
+      - name: Commit and Push if changed
+        run: |
+          # 差分があるかチェックし、変化がある場合のみコミットする
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add advisory.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update advisory status" && git push)

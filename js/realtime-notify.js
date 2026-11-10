@@ -463,4 +463,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     connectRealtimeAPI();
+
+    checkSpecialAdvisoriesOnLoad();
 });
+
+async function checkSpecialAdvisoriesOnLoad() {
+    try {
+        const res = await fetch(`advisory.json?_=${Date.now()}`);
+        if (!res.ok) return;
+
+        const rawData = await res.json();
+        
+        // 取得したデータが単一のオブジェクトだった場合も配列に変換する安全対策
+        const dataList = Array.isArray(rawData) ? rawData : [rawData];
+        
+        // 配列をループして、activeな臨時情報があればすべて表示する
+        dataList.forEach(data => {
+            if (data && data.active) {
+                const formattedContent = data.content.replace(/\r?\n/g, '<br>');
+                const formattedTime = data.time.substring(0, 16).replace('T', ' ');
+
+                const contentHtml = `
+                    <strong style="color: #ff4757; font-size: 15px;">⚠️ 地震に関する重大な情報が発表されています</strong><br>
+                    <span style="font-size: 14px; font-weight: bold; margin-top: 5px; display: block;">${data.title}</span>
+                    
+                    <div style="font-size: 12px; color: #f1f2f6; margin-top: 6px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 4px; line-height: 1.5; max-height: 150px; overflow-y: auto; border: 1px solid rgba(255, 71, 87, 0.3);">
+                        ${formattedContent}
+                    </div>
+                    
+                    <span style="font-size: 11px; color: #ced6e0; display: block; margin-top: 8px;">
+                        発表: 気象庁 (${formattedTime})
+                    </span>
+                `;
+                
+                showRealtimePopup('🚨 地震に関する臨時情報', contentHtml, 'nankai-alert', 0);
+            }
+        });
+    } catch (error) {
+        console.warn("臨時情報の確認に失敗しました", error);
+    }
+}
