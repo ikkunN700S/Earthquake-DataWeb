@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> 
+    <script>
+        if (window.location.hostname.endsWith('github.io')) {
+            var customDomain = 'earthquakedataweb.minakamirecords.com'; // ※ご自身のドメインに変更
+            window.location.replace('https://' + customDomain + window.location.pathname + window.location.search);
+        }
+    </script>
     <meta name="format-detection" content="telephone=no, address=no, email=no, date=no">
     <link rel="manifest" href="./manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
