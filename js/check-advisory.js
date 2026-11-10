@@ -12,7 +12,6 @@ async function main() {
         const entries = xml.match(/<entry>[\s\S]*?<\/entry>/g) || [];
 
         for (const entry of entries) {
-            // 改行を含めて正確に抽出
             const titleMatch = entry.match(/<title>([\s\S]*?)<\/title>/);
             const contentMatch = entry.match(/<content[^>]*>([\s\S]*?)<\/content>/);
             const timeMatch = entry.match(/<updated>([\s\S]*?)<\/updated>/);
@@ -25,11 +24,15 @@ async function main() {
                 // 「南海トラフ」または「北海道・三陸沖後発地震注意情報」を検知
                 if (title.includes('南海トラフ') || title.includes('北海道・三陸沖後発地震注意情報')) {
                     
-                    // 文面に「終了」や「通常どおり」が含まれる場合は注意喚起期間の終了と判定
-                    if (content.includes('終了') || content.includes('通常どおり')) {
+                    if (
+                        title.includes('調査終了') ||                     // 臨時情報（調査終了）を検知
+                        content.includes('呼びかけ等していました') ||       // 解説情報での期間終了（過去形）を検知
+                        content.includes('特別な注意の呼びかけは終了') || // 北海道三陸沖などでの明確な終了フレーズ
+                        content.includes('通常どおりの生活')              // 平常復帰フレーズ
+                    ) {
                         newAdvisory = { active: false };
                     } else {
-                        // 発表中ならタイトルと文面をそのまま保存
+                        // 発表中（調査中・警戒・注意など）ならそのまま保存
                         newAdvisory = { active: true, title: title, content: content, time: time };
                     }
                     break; // 最新の1件で判定を確定させる
