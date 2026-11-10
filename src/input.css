@@ -74,6 +74,8 @@
 .realtime-popup.intensity-mid  { @apply border-l-[#ffa502]; }
 .realtime-popup.eew-alert      { @apply border-l-[#ff3838] bg-[#c23616]/95; }
 .realtime-popup.tsunami-alert  { @apply border-l-[#0abde3] bg-[#0a3d62]/95; }
+.realtime-popup.nankai-alert { @apply border-l-[#ff4757] bg-[#3e0000]/95; }
+
 
 /* ポップアップ内のテキスト装飾 */
 .realtime-popup-title {

@@ -6,9 +6,11 @@ async function main() {
         const res = await fetch('https://www.data.jma.go.jp/developer/xml/feed/eqvol.xml');
         const xml = await res.text();
 
-        let newAdvisory = { active: false };
+        let nankai = { active: false, id: 'nankai' };
+        let hokkaido = { active: false, id: 'hokkaido' };
+        let nankaiFound = false;
+        let hokkaidoFound = false;
         
-        // <entry>タグのブロックをすべて配列として抽出
         const entries = xml.match(/<entry>[\s\S]*?<\/entry>/g) || [];
 
         for (const entry of entries) {
@@ -21,46 +23,66 @@ async function main() {
                 const content = contentMatch[1].trim();
                 const time = timeMatch[1].trim();
 
-                // 「南海トラフ」または「北海道・三陸沖後発地震注意情報」を検知
-                if (title.includes('南海トラフ') || title.includes('北海道・三陸沖後発地震注意情報')) {                    
+                // ① 南海トラフの判定（独立）
+                if (title.includes('南海トラフ') && !nankaiFound) {
+                    nankaiFound = true;
                     if (
-                        title.includes('調査終了') ||                         // 南海トラフ臨時情報（調査終了）
-                        title.includes('期間の終了') ||                       // 北海道三陸沖（呼び掛けの期間の終了について）
-                        content.includes('呼びかけ等していました') ||         // 南海トラフ（過去形による終了宣言）
-                        content.match(/特別な注意(.*?)終了/) ||               // 北海道三陸沖（送り仮名や表現のブレを吸収）
-                        content.includes('通常どおりの生活')                  // 共通の平常復帰フレーズ
+                        title.includes('調査終了') ||
+                        content.includes('呼びかけ等していました') ||
+                        content.includes('通常どおりの生活')
                     ) {
-                        newAdvisory = { active: false };
+                        nankai = { active: false, id: 'nankai' };
                     } else {
-                        // 発表中（警戒・注意など）ならそのまま保存
-                        newAdvisory = { active: true, title: title, content: content, time: time };
+                        nankai = { active: true, id: 'nankai', title, content, time };
                     }
-                    break; // 最新の1件で判定を確定させる
                 }
+
+                // ② 北海道・三陸沖の判定（独立）
+                if (title.includes('北海道・三陸沖後発地震注意情報') && !hokkaidoFound) {
+                    hokkaidoFound = true;
+                    if (
+                        title.includes('期間の終了') ||
+                        content.match(/特別な注意(.*?)終了/) ||
+                        content.includes('通常どおりの生活')
+                    ) {
+                        hokkaido = { active: false, id: 'hokkaido' };
+                    } else {
+                        hokkaido = { active: true, id: 'hokkaido', title, content, time };
+                    }
+                }
+
+                // 両方の最新情報が見つかった時点で探索終了
+                if (nankaiFound && hokkaidoFound) break;
             }
         }
 
-        // XMLから情報が押し出されて見つからなかった場合の保持処理
-        if (!newAdvisory.active && entries.length > 0) {
-            if (fs.existsSync(DATA_FILE)) {
-                const current = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
-                if (current.active) {
-                    const infoTime = new Date(current.time).getTime();
-                    // 発表から1週間 (604800000ms) 経過していなければ状態を保持
-                    if (Date.now() - infoTime < 7 * 24 * 60 * 60 * 1000) {
-                        newAdvisory = current;
-                    }
-                }
-            }
-        }
-
-        let currentAdvisory = { active: false };
+        // XMLから情報が押し出された場合の保持処理（配列対応）
         if (fs.existsSync(DATA_FILE)) {
-            currentAdvisory = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+            const currentData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+            // 以前の単一オブジェクト形式からの移行対策として配列化
+            const currentList = Array.isArray(currentData) ? currentData : [currentData];
+
+            for (const current of currentList) {
+                if (current && current.active) {
+                    const infoTime = new Date(current.time).getTime();
+                    if (Date.now() - infoTime < 7 * 24 * 60 * 60 * 1000) {
+                        if (current.id === 'nankai' && !nankaiFound) nankai = current;
+                        if (current.id === 'hokkaido' && !hokkaidoFound) hokkaido = current;
+                    }
+                }
+            }
         }
 
-        if (JSON.stringify(currentAdvisory) !== JSON.stringify(newAdvisory)) {
-            fs.writeFileSync(DATA_FILE, JSON.stringify(newAdvisory, null, 2));
+        const newAdvisoryList = [nankai, hokkaido];
+
+        let currentAdvisoryList = [];
+        if (fs.existsSync(DATA_FILE)) {
+            const currentData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+            currentAdvisoryList = Array.isArray(currentData) ? currentData : [currentData];
+        }
+
+        if (JSON.stringify(currentAdvisoryList) !== JSON.stringify(newAdvisoryList)) {
+            fs.writeFileSync(DATA_FILE, JSON.stringify(newAdvisoryList, null, 2));
             console.log('Status changed. File updated.');
         } else {
             console.log('No changes detected.');
