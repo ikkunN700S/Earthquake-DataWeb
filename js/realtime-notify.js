@@ -12,10 +12,11 @@ let currentConnectionState = 'offline'; // 現在のステータスを管理
 const processedEventIds = new Set(); 
 
 // バックアップ通信が動いていなければ動かす補助関数
-function ensureFallbackRunning() {
+async function ensureFallbackRunning() {
     if (!pollingIntervalId && !burstPollingIntervalId) {
-        fallbackPolling();
+        const fetchPromise = fallbackPolling();
         pollingIntervalId = setInterval(fallbackPolling, 60000);
+        await fetchPromise; 
     }
 }
 
@@ -254,7 +255,9 @@ async function fallbackPolling() {
         }
 
         if (pollingIntervalId || burstPollingIntervalId) {
-            updateWebSocketStatus('fallback');
+            if (currentConnectionState !== 'connecting') {
+                updateWebSocketStatus('fallback');
+            }
         }
 
         const dataList = await res.json();
@@ -267,7 +270,7 @@ async function fallbackPolling() {
     }
 }
 
-function connectRealtimeAPI() {
+async function connectRealtimeAPI() {
     if (currentWs) {
         currentWs.onclose = null; 
         currentWs.close();
@@ -280,8 +283,11 @@ function connectRealtimeAPI() {
 
     updateWebSocketStatus('connecting');
     
-    // 接続試行中もバックアップ通信を継続する
-    ensureFallbackRunning();
+    // 接続試行時、バックアップ通信（履歴取得）を完了させポップアップを出す
+    await ensureFallbackRunning();
+
+    // 履歴取得中にユーザーが手動でバックアップ通信に切り替えていた場合はWS接続を中断
+    if (currentConnectionState === 'fallback') return;
 
     currentWs = new WebSocket('wss://api.p2pquake.net/v2/ws');
 
