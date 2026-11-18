@@ -10,11 +10,10 @@ let usgsMapRef = null;
 async function addUsgsEarthquakeLayer(map) {
     usgsMapRef = map;
     
-    // 期間を「過去30日間」に変更
     const daysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const startDateStr = daysAgo.toISOString().split('T')[0];
     
-    // ★変更: 緯度経度の制限を外し、世界中を対象にする。代わりに minmagnitude=5.0 を指定
+    // M5.0以上の世界の地震を取得
     const usgsUrl = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${startDateStr}&minmagnitude=5.0`;
 
     try {
@@ -23,8 +22,7 @@ async function addUsgsEarthquakeLayer(map) {
 
         usgsEarthquakeLayer = L.geoJSON(geojsonData, {
             pointToLayer: function (feature, latlng) {
-                
-                // 日付変更線をまたぐ座標シフト
+                // 日付変更線をまたいで環太平洋造山帯を繋げるための座標シフト
                 let lng = latlng.lng;
                 if (lng < -30) {
                     lng += 360;
@@ -40,7 +38,7 @@ async function addUsgsEarthquakeLayer(map) {
 
                 return L.circleMarker(shiftedLatLng, {
                     radius: radius,
-                    fillColor: "#9c88ff",
+                    fillColor: "#9c88ff", 
                     color: "rgba(156, 136, 255, 0.6)",
                     weight: 1,
                     opacity: 1,
