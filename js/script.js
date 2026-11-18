@@ -142,6 +142,10 @@ function initMap() {
     map = L.map('map').setView([36.2048, 138.2529], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
+    if (typeof addUsgsEarthquakeLayer === 'function') {
+        addUsgsEarthquakeLayer(map);
+    }
+
     // クラスタリンググループの初期化
     markerClusterGroup = L.markerClusterGroup({
         chunkedLoading: true, // 大量データ読み込み時のフリーズを防ぐ
@@ -224,7 +228,7 @@ function getIntensityLevel(intensityStr) {
 function setDefaultDates() {
     const today = new Date();
     const past = new Date();
-    past.setDate(today.getDate() - 30); // 30日前
+    past.setDate(today.getDate() - 7); // 30日前
 
     // YYYY-MM-DD形式に変換
     const formatYMD = (date) => {
@@ -302,22 +306,27 @@ function executeSearch() {
 
     // ピンを再配置
     updateDisplay(currentDataList, "検索結果");
-
-    // ★検索した直後も「最新10件」を表示させるために呼び出す
     resetSelection();
 }
 
 // 検索ボタンのイベント
-document.getElementById('btn-search').addEventListener('click', executeSearch);
+document.getElementById('btn-search').addEventListener('click', () => {
+    // 検索実行時はUSGSレイヤーを強制OFFにし、トグルの見た目もOFFにする
+    if (typeof forceUsgsState === 'function') forceUsgsState(false);
+    executeSearch();
+});
 
 // 検索条件のリセット機能
 document.getElementById('btn-reset').addEventListener('click', () => {
+    // リセット時はUSGSレイヤーを強制ONにし、トグルの見た目もONにする
+    if (typeof forceUsgsState === 'function') forceUsgsState(true);
+    
     // 各入力項目を空、または初期値に戻す
     document.getElementById('search-location').value = '';
     document.getElementById('search-intensity').selectedIndex = 0;
     document.getElementById('search-mag').value = '';
     
-    // 日付を「直近30日」に戻す（以前作った関数を再利用！）
+    // 日付をデフォルトに戻す
     setDefaultDates();
 
     // 初期状態に戻した上で、自動的に検索を実行する
@@ -889,11 +898,22 @@ async function initializeApp() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 既存の有感地震用トグル
     const eqToggleBtn = document.getElementById('toggle-earthquake-btn');
     if (eqToggleBtn) {
         eqToggleBtn.addEventListener('change', (e) => {
             isEarthquakesVisible = e.target.checked;
             updateEarthquakeVisibility();
+        });
+    }
+    
+    // USGS無感地震用のトグル
+    const usgsToggleBtn = document.getElementById('toggle-usgs-btn');
+    if (usgsToggleBtn) {
+        usgsToggleBtn.addEventListener('change', (e) => {
+            if (typeof toggleUsgsSwitch === 'function') {
+                toggleUsgsSwitch(e.target.checked);
+            }
         });
     }
 });

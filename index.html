@@ -52,15 +52,20 @@
                 <label class="inline-flex items-center cursor-pointer text-sm font-bold text-slate-300 gap-2 shrink-0">
                     <input type="checkbox" id="toggle-earthquake-btn" class="sr-only peer" checked>
                     <div class="w-9 h-5 bg-navy-600 rounded-full peer peer-checked:bg-accent relative transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
-                    地震マーカー
+                    地震ピン
                 </label>
                 <label class="inline-flex items-center cursor-pointer text-sm font-bold text-slate-300 gap-2 shrink-0">
                     <input type="checkbox" id="toggle-stations-btn" class="sr-only peer">
                     <div class="w-9 h-5 bg-navy-600 rounded-full peer peer-checked:bg-accent relative transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
                     観測点
                 </label>
+                <label class="inline-flex items-center cursor-pointer text-sm font-bold text-slate-300 gap-2 shrink-0">
+                    <input type="checkbox" id="toggle-usgs-btn" class="sr-only peer" checked>
+                    <div class="w-9 h-5 bg-navy-600 rounded-full peer peer-checked:bg-accent relative transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+                    無感地震
+                </label>
                 <div class="flex flex-wrap items-center gap-2">
-                    <input type="text" id="search-location" placeholder="地名 (例: 東京)" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent w-32">
+                    <input type="text" id="search-location" placeholder="地名 (例: 関東)" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent w-32">
                     <input type="number" id="search-mag" placeholder="M以上" min="0" step="0.1" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent w-20">
                     <select id="search-intensity" class="bg-navy-900 border border-navy-600 text-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-accent">
                         <option value="1">震度 1 以上</option>
@@ -101,6 +106,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="./js/usgs-earthquake-layer.js"></script>
     <script src="./js/script.js"></script>
     <script src="./js/stations-viewer.js"></script>
     <script src="./js/realtime-notify.js"></script>
