@@ -10,6 +10,7 @@ let burstPollingIntervalId = null;
 let burstTimeoutId = null;
 let currentConnectionState = 'offline'; // 現在のステータスを管理
 const processedEventIds = new Set(); 
+let wsWatchdogTimer = null;
 
 // バックアップ通信が動いていなければ動かす補助関数
 async function ensureFallbackRunning() {
@@ -275,27 +276,24 @@ async function fallbackPolling() {
 }
 
 async function connectRealtimeAPI() {
+    // 既存の通信やタイマーをリセット
     if (currentWs) {
         currentWs.onclose = null; 
         currentWs.close();
         currentWs = null;
     }
-    if (wsConnectionTimeoutId) {
-        clearTimeout(wsConnectionTimeoutId);
-        wsConnectionTimeoutId = null;
-    }
+    if (wsConnectionTimeoutId) clearTimeout(wsConnectionTimeoutId);
+    if (wsWatchdogTimer) clearInterval(wsWatchdogTimer); 
 
     updateWebSocketStatus('connecting');
     
-    // 接続試行時、バックアップ通信（履歴取得）を完了させポップアップを出す
+    // 接続試行中もバックアップ通信を継続
     await ensureFallbackRunning();
 
-    // 履歴取得中にユーザーが手動でバックアップ通信に切り替えていた場合はWS接続を中断
     if (currentConnectionState === 'fallback') return;
 
     currentWs = new WebSocket('wss://api.p2pquake.net/v2/ws');
 
-    // 5秒以内に接続が確立しなかった場合はタイムアウトとして切断
     wsConnectionTimeoutId = setTimeout(() => {
         if (currentWs && currentWs.readyState !== WebSocket.OPEN) {
             console.warn('WebSocket接続タイムアウト。バックアップ通信へ切り替えます');
@@ -313,6 +311,11 @@ async function connectRealtimeAPI() {
         updateWebSocketStatus('realtime'); 
         
         if (wsConnectionTimeoutId) clearTimeout(wsConnectionTimeoutId);
+
+        wsWatchdogTimer = setInterval(() => {
+            console.log('WebSocketをリフレッシュします...');
+            connectRealtimeAPI(); 
+        }, 300000); 
     };
 
     currentWs.onmessage = (event) => {
@@ -323,6 +326,7 @@ async function connectRealtimeAPI() {
     currentWs.onclose = () => {
         updateWebSocketStatus('fallback');
         if (wsConnectionTimeoutId) clearTimeout(wsConnectionTimeoutId);
+        if (wsWatchdogTimer) clearInterval(wsWatchdogTimer); 
 
         if (pollingIntervalId) { clearInterval(pollingIntervalId); pollingIntervalId = null; }
         if (burstPollingIntervalId) { clearInterval(burstPollingIntervalId); burstPollingIntervalId = null; }
