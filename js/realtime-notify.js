@@ -250,14 +250,16 @@ async function fallbackPolling() {
         const res = await fetch('https://api.p2pquake.net/v2/history?codes=551&codes=552&codes=556&limit=100');
 
         if (!res.ok) {
-            if (pollingIntervalId || burstPollingIntervalId) updateWebSocketStatus('offline');
+            // WS通信中(🟢)や試行中(🟡)の時は、バッジをエラー(🔴)で上書きしない
+            if (currentConnectionState !== 'connecting' && currentConnectionState !== 'realtime') {
+                updateWebSocketStatus('offline');
+            }
             return;
         }
 
-        if (pollingIntervalId || burstPollingIntervalId) {
-            if (currentConnectionState !== 'connecting') {
-                updateWebSocketStatus('fallback');
-            }
+        // WS通信中(🟢)や試行中(🟡)の時は、バッジをバックアップ(🟠)で上書きしない
+        if (currentConnectionState !== 'connecting' && currentConnectionState !== 'realtime') {
+            updateWebSocketStatus('fallback');
         }
 
         const dataList = await res.json();
@@ -266,7 +268,9 @@ async function fallbackPolling() {
         }
     } catch (error) {
         console.warn("バックアップAPIの取得に失敗しました", error);
-        updateWebSocketStatus('offline');
+        if (currentConnectionState !== 'connecting' && currentConnectionState !== 'realtime') {
+            updateWebSocketStatus('offline');
+        }
     }
 }
 
@@ -309,11 +313,6 @@ async function connectRealtimeAPI() {
         updateWebSocketStatus('realtime'); 
         
         if (wsConnectionTimeoutId) clearTimeout(wsConnectionTimeoutId);
-
-        // 接続が完全に確立してはじめてバックアップ通信を停止する
-        if (pollingIntervalId) { clearInterval(pollingIntervalId); pollingIntervalId = null; }
-        if (burstPollingIntervalId) { clearInterval(burstPollingIntervalId); burstPollingIntervalId = null; }
-        if (burstTimeoutId) { clearTimeout(burstTimeoutId); burstTimeoutId = null; }
     };
 
     currentWs.onmessage = (event) => {
