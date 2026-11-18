@@ -23,18 +23,24 @@ async function addUsgsEarthquakeLayer(map) {
 
         usgsEarthquakeLayer = L.geoJSON(geojsonData, {
             pointToLayer: function (feature, latlng) {
-                const mag = feature.properties.mag;
                 
-                // M5.0以上のデータのみ取得されるため、M5〜M8クラスに応じたサイズに調整
+                // 日付変更線をまたぐ座標シフト
+                let lng = latlng.lng;
+                if (lng < -30) {
+                    lng += 360;
+                }
+                const shiftedLatLng = L.latLng(latlng.lat, lng);
+
+                const mag = feature.properties.mag;
                 let radius = 6;
                 if (mag >= 8.0) radius = 24;
                 else if (mag >= 7.0) radius = 16;
                 else if (mag >= 6.0) radius = 10;
                 else if (mag >= 5.0) radius = 6;
 
-                return L.circleMarker(latlng, {
+                return L.circleMarker(shiftedLatLng, {
                     radius: radius,
-                    fillColor: "#9c88ff", // 色を紫に変更（日本の赤/青ピンと区別するため）
+                    fillColor: "#9c88ff",
                     color: "rgba(156, 136, 255, 0.6)",
                     weight: 1,
                     opacity: 1,

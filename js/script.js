@@ -228,7 +228,7 @@ function getIntensityLevel(intensityStr) {
 function setDefaultDates() {
     const today = new Date();
     const past = new Date();
-    past.setDate(today.getDate() - 7); // 30日前
+    past.setDate(today.getDate() - 30); // 30日前
 
     // YYYY-MM-DD形式に変換
     const formatYMD = (date) => {
@@ -261,7 +261,7 @@ async function loadData() {
                 rawIntensity: intensity ? intensity.trim() : "", 
                 csvLat: lat, 
                 csvLon: lon,
-                // ★ 深さとコメントがない（古いデータ）場合は「データなし」を代入
+                // 深さとコメントがない（古いデータ）場合は「データなし」を代入
                 depth: (depth && depth.trim() !== "") ? depth.trim() : "データなし",
                 comment: (comment && comment.trim() !== "") ? comment.trim() : "データなし",
                 timeMs: time ? new Date(time).getTime() : 0
@@ -289,7 +289,7 @@ function executeSearch() {
     const startMs = startDateStr ? new Date(startDateStr + "T00:00:00").getTime() : 0;
     const endMs = endDateStr ? new Date(endDateStr + "T23:59:59").getTime() : Infinity;
 
-    // ★絞り込んだ結果を変数に保存（let filtered ではなく currentDataList に代入）
+    // 絞り込んだ結果を変数に保存
     currentDataList = allEarthquakes.filter(eq => {
         const matchLoc = eq.location.includes(locQuery);
         const matchInt = eq.intensityLevel >= minIntensity;
