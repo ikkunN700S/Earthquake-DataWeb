@@ -88,40 +88,43 @@ function updateWebSocketStatus(state) {
 }
 
 function processIncomingData(data) {
+    // 1. すでにポップアップ済みのIDならスキップ
     if (processedEventIds.has(data.id)) return;
 
-    if (typeof p2pApiDataList !== 'undefined' && p2pApiDataList.some(item => item.id === data.id)) {
-        processedEventIds.add(data.id);
-        return;
-    }
-
+    // 2. 15分以上前の古いデータはポップアップしない（ページ読み込み時の過去履歴を弾く）
     if (data.time) {
         const jstIso = data.time.replace(/\//g, '-').replace(' ', 'T') + '+09:00';
         const dataTimeMs = new Date(jstIso).getTime();
         const nowMs = Date.now();
 
-        if (nowMs - dataTimeMs > 900000) {
+        if (nowMs - dataTimeMs > 900000) { 
             processedEventIds.add(data.id);
             return;
         }
     }
 
+    // 3. 「15分以内の新しい情報」の処理を確定
     processedEventIds.add(data.id);
     if (processedEventIds.size > 1000) {
         const firstItem = processedEventIds.values().next().value;
         processedEventIds.delete(firstItem);
     }
 
+    // 4. リストにIDがあってもポップアップは出す
     if (data.code === 551 && data.earthquake) {
         handleEarthquakeEvent(data.earthquake);
 
+        // サイドバー用のリスト(p2pApiDataList)には、重複していない場合のみ追加する
         if (typeof p2pApiDataList !== 'undefined') {
-            p2pApiDataList.unshift(data);
-            if (p2pApiDataList.length > 100) p2pApiDataList.pop();
-            const oldestApi = p2pApiDataList[p2pApiDataList.length - 1];
-            if (oldestApi && oldestApi.earthquake && oldestApi.earthquake.time && typeof p2pOldestTimeMs !== 'undefined') {
-                const jstOldest = oldestApi.earthquake.time.replace(/\//g, '-').replace(' ', 'T') + '+09:00';
-                p2pOldestTimeMs = new Date(jstOldest).getTime() - 300000;
+            const isDuplicate = p2pApiDataList.some(item => item.id === data.id);
+            if (!isDuplicate) {
+                p2pApiDataList.unshift(data);
+                if (p2pApiDataList.length > 100) p2pApiDataList.pop();
+                const oldestApi = p2pApiDataList[p2pApiDataList.length - 1];
+                if (oldestApi && oldestApi.earthquake && oldestApi.earthquake.time && typeof p2pOldestTimeMs !== 'undefined') {
+                    const jstOldest = oldestApi.earthquake.time.replace(/\//g, '-').replace(' ', 'T') + '+09:00';
+                    p2pOldestTimeMs = new Date(jstOldest).getTime() - 300000;
+                }
             }
         }
     } else if (data.code === 556 && !data.cancelled) {
@@ -276,18 +279,24 @@ async function fallbackPolling() {
 }
 
 async function connectRealtimeAPI() {
-    // 既存の通信やタイマーをリセット
     if (currentWs) {
         currentWs.onclose = null; 
         currentWs.close();
         currentWs = null;
     }
-    if (wsConnectionTimeoutId) clearTimeout(wsConnectionTimeoutId);
-    if (wsWatchdogTimer) clearInterval(wsWatchdogTimer); 
+    if (wsConnectionTimeoutId) {
+        clearTimeout(wsConnectionTimeoutId);
+        wsConnectionTimeoutId = null;
+    }
+    // 既存のウォッチドッグタイマーをリセット
+    if (typeof wsWatchdogTimer !== 'undefined' && wsWatchdogTimer) {
+        clearInterval(wsWatchdogTimer);
+        wsWatchdogTimer = null;
+    }
 
     updateWebSocketStatus('connecting');
     
-    // 接続試行中もバックアップ通信を継続
+    // 接続試行中もバックアップ通信（60秒ごとの履歴取得）を裏で回しておく
     await ensureFallbackRunning();
 
     if (currentConnectionState === 'fallback') return;
@@ -313,9 +322,9 @@ async function connectRealtimeAPI() {
         if (wsConnectionTimeoutId) clearTimeout(wsConnectionTimeoutId);
 
         wsWatchdogTimer = setInterval(() => {
-            console.log('WebSocketをリフレッシュします...');
-            connectRealtimeAPI(); 
-        }, 300000); 
+            console.log('通信経路維持のためWebSocketをリフレッシュします');
+            connectRealtimeAPI();
+        }, 300000);
     };
 
     currentWs.onmessage = (event) => {
@@ -326,8 +335,9 @@ async function connectRealtimeAPI() {
     currentWs.onclose = () => {
         updateWebSocketStatus('fallback');
         if (wsConnectionTimeoutId) clearTimeout(wsConnectionTimeoutId);
-        if (wsWatchdogTimer) clearInterval(wsWatchdogTimer); 
+        if (typeof wsWatchdogTimer !== 'undefined' && wsWatchdogTimer) clearInterval(wsWatchdogTimer);
 
+        // 以下のタイマー停止処理は、通常バックアップへの移行のために必要なので残す
         if (pollingIntervalId) { clearInterval(pollingIntervalId); pollingIntervalId = null; }
         if (burstPollingIntervalId) { clearInterval(burstPollingIntervalId); burstPollingIntervalId = null; }
         if (burstTimeoutId) { clearTimeout(burstTimeoutId); burstTimeoutId = null; }
