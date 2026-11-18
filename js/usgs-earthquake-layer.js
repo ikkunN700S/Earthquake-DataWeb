@@ -1,17 +1,21 @@
 /**
- * USGS GeoJSON API 過去7日間の日本周辺地震
+ * USGS GeoJSON API 過去30日間の世界の大きな地震 (M5.0以上)
  * Leaflet レイヤー管理・表示切り替え対応版
  */
 
-let usgsEarthquakeLayer = null; // 生成したレイヤーを保持
-let usgsSwitchState = true;     // ユーザーのスイッチON/OFF状態
-let usgsMapRef = null;          // Mapオブジェクトの参照
+let usgsEarthquakeLayer = null; 
+let usgsSwitchState = true;     
+let usgsMapRef = null;          
 
 async function addUsgsEarthquakeLayer(map) {
     usgsMapRef = map;
-    const aWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const startDateStr = aWeekAgo.toISOString().split('T')[0];
-    const usgsUrl = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${startDateStr}&minlatitude=24&maxlatitude=46&minlongitude=122&maxlongitude=154`;
+    
+    // 期間を「過去30日間」に変更
+    const daysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const startDateStr = daysAgo.toISOString().split('T')[0];
+    
+    // ★変更: 緯度経度の制限を外し、世界中を対象にする。代わりに minmagnitude=5.0 を指定
+    const usgsUrl = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${startDateStr}&minmagnitude=5.0`;
 
     try {
         const response = await fetch(usgsUrl);
@@ -20,19 +24,21 @@ async function addUsgsEarthquakeLayer(map) {
         usgsEarthquakeLayer = L.geoJSON(geojsonData, {
             pointToLayer: function (feature, latlng) {
                 const mag = feature.properties.mag;
-                let radius = 3;
-                if (mag >= 8) radius = 20;
-                else if (mag >= 6) radius = 12;
-                else if (mag >= 4) radius = 6;
-                else if (mag > 0) radius = mag * 1.5;
+                
+                // M5.0以上のデータのみ取得されるため、M5〜M8クラスに応じたサイズに調整
+                let radius = 6;
+                if (mag >= 8.0) radius = 24;
+                else if (mag >= 7.0) radius = 16;
+                else if (mag >= 6.0) radius = 10;
+                else if (mag >= 5.0) radius = 6;
 
                 return L.circleMarker(latlng, {
                     radius: radius,
-                    fillColor: "#ff4757",
-                    color: "rgba(255, 71, 87, 0.6)",
+                    fillColor: "#9c88ff", // 色を紫に変更（日本の赤/青ピンと区別するため）
+                    color: "rgba(156, 136, 255, 0.6)",
                     weight: 1,
                     opacity: 1,
-                    fillOpacity: 0.3
+                    fillOpacity: 0.4
                 });
             },
             onEachFeature: function (feature, layer) {
@@ -42,7 +48,7 @@ async function addUsgsEarthquakeLayer(map) {
 
                 layer.bindPopup(`
                     <div style="font-size: 12px; color: #333; min-width: 120px;">
-                        <strong style="color: #ff4757;">M${props.mag.toFixed(1)}</strong><br>
+                        <strong style="color: #9c88ff; font-size: 14px;">M${props.mag.toFixed(1)}</strong><br>
                         深さ: ${depth.toFixed(1)} km<br>
                         ${time}<br>
                         <span style="font-size: 10px; color: #666;">${props.place}</span>
@@ -55,8 +61,8 @@ async function addUsgsEarthquakeLayer(map) {
             }
         });
 
-        updateUsgsVisibility(); // 初回描画の判定
-        console.log("USGS地震分布レイヤーを正常に準備しました。");
+        updateUsgsVisibility();
+        console.log("USGS 世界の地震レイヤーを正常に準備しました。");
 
     } catch (error) {
         console.error("USGSレイヤーの追加に失敗しました:", error);
@@ -73,7 +79,6 @@ function toggleUsgsSwitch(isVisible) {
 function forceUsgsState(isTurnOn) {
     usgsSwitchState = isTurnOn;
     
-    // UI上のチェックボックスの見た目も連動してチェックを入れる/外す
     const toggleBtn = document.getElementById('toggle-usgs-btn');
     if (toggleBtn) {
         toggleBtn.checked = isTurnOn;
@@ -86,7 +91,6 @@ function forceUsgsState(isTurnOn) {
 function updateUsgsVisibility() {
     if (!usgsEarthquakeLayer || !usgsMapRef) return;
     
-    // スイッチの状態だけを見てシンプルに表示・非表示を切り替える
     if (usgsSwitchState) {
         if (!usgsMapRef.hasLayer(usgsEarthquakeLayer)) {
             usgsEarthquakeLayer.addTo(usgsMapRef);
