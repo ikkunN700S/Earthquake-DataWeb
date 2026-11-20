@@ -60,6 +60,7 @@ function updateWebSocketStatus(state) {
                     currentWs = null;
                 }
                 if (wsConnectionTimeoutId) clearTimeout(wsConnectionTimeoutId);
+                if (wsWatchdogTimer) { clearInterval(wsWatchdogTimer); wsWatchdogTimer = null; }
                 
                 updateWebSocketStatus('fallback');
                 ensureFallbackRunning();
@@ -268,6 +269,9 @@ async function fallbackPolling() {
 
         const dataList = await res.json();
         for (let i = dataList.length - 1; i >= 0; i--) {
+            if (!processedEventIds.has(dataList[i].id)) {
+                console.log('🔄 [REST API受信]', dataList[i].code, dataList[i].id, dataList[i].time);
+            }
             processIncomingData(dataList[i]);
         }
     } catch (error) {
@@ -328,8 +332,13 @@ async function connectRealtimeAPI() {
     };
 
     currentWs.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        processIncomingData(data); 
+        try {
+            const data = JSON.parse(event.data);
+            console.log('⚡ [WebSocket受信]', data.code, data.id, data.time);
+            processIncomingData(data); 
+        } catch (e) {
+            console.error('WebSocketデータの解析エラー:', e, event.data);
+        }
     };
 
     currentWs.onclose = () => {
