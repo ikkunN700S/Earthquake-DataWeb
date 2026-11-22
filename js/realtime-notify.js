@@ -88,36 +88,58 @@ function updateWebSocketStatus(state) {
     }
 }
 
-function processIncomingData(data) {
-    // 1. すでにポップアップ済みのIDならスキップ
-    if (processedEventIds.has(data.id)) return;
+function processIncomingData(data, source = 'Unknown') {
+    // 1. 地震(551)・津波(552)・緊急地震速報(556)以外は即座に無視する（555などを弾く）
+    if (data.code !== 551 && data.code !== 552 && data.code !== 556) return;
 
-    // 2. 15分以上前の古いデータはポップアップしない（ページ読み込み時の過去履歴を弾く）
+    // 2. WebSocket(idなし)とREST API(idあり)の両方で一致する一意のキーを生成
+    let eventKey = '';
+    if (data.code === 551 && data.earthquake) {
+        const eqTime = data.earthquake.time || data.time || '';
+        const hypoName = data.earthquake.hypocenter?.name || '';
+        const maxScale = data.earthquake.maxScale ?? '';
+        eventKey = `551_${eqTime}_${hypoName}_${maxScale}`;
+    } else {
+        eventKey = `${data.code}_${data.time || Date.now()}`;
+    }
+
+    // 3. すでにポップアップ済みのイベントならスキップ
+    if (processedEventIds.has(eventKey)) return;
+
+    // 4. 15分以上前の古いデータはポップアップしない
     if (data.time) {
         const jstIso = data.time.replace(/\//g, '-').replace(' ', 'T') + '+09:00';
         const dataTimeMs = new Date(jstIso).getTime();
         const nowMs = Date.now();
 
         if (nowMs - dataTimeMs > 900000) { 
-            processedEventIds.add(data.id);
+            processedEventIds.add(eventKey);
             return;
         }
     }
 
-    // 3. 「15分以内の新しい情報」の処理を確定
-    processedEventIds.add(data.id);
+    // 5. 「15分以内の新しい情報」の処理を確定し、ここで初めてログを出力
+    const icon = source === 'WebSocket' ? '⚡' : '🔄';
+    console.log(`${icon} [${source}受信] code:${data.code} (${eventKey})`);
+
+    processedEventIds.add(eventKey);
     if (processedEventIds.size > 1000) {
         const firstItem = processedEventIds.values().next().value;
         processedEventIds.delete(firstItem);
     }
 
-    // 4. リストにIDがあってもポップアップは出す
+    // 6. 種別ごとのポップアップ表示処理
     if (data.code === 551 && data.earthquake) {
         handleEarthquakeEvent(data.earthquake);
 
         // サイドバー用のリスト(p2pApiDataList)には、重複していない場合のみ追加する
         if (typeof p2pApiDataList !== 'undefined') {
-            const isDuplicate = p2pApiDataList.some(item => item.id === data.id);
+            const isDuplicate = p2pApiDataList.some(item =>
+                (data.id && item.id === data.id) ||
+                (item.earthquake?.time === data.earthquake.time &&
+                 item.earthquake?.hypocenter?.name === data.earthquake.hypocenter?.name &&
+                 item.earthquake?.maxScale === data.earthquake.maxScale)
+            );
             if (!isDuplicate) {
                 p2pApiDataList.unshift(data);
                 if (p2pApiDataList.length > 100) p2pApiDataList.pop();
@@ -269,10 +291,7 @@ async function fallbackPolling() {
 
         const dataList = await res.json();
         for (let i = dataList.length - 1; i >= 0; i--) {
-            if (!processedEventIds.has(dataList[i].id)) {
-                console.log('🔄 [REST API受信]', dataList[i].code, dataList[i].id, dataList[i].time);
-            }
-            processIncomingData(dataList[i]);
+            processIncomingData(dataList[i], 'REST API');
         }
     } catch (error) {
         console.warn("バックアップAPIの取得に失敗しました", error);
@@ -334,8 +353,7 @@ async function connectRealtimeAPI() {
     currentWs.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
-            console.log('⚡ [WebSocket受信]', data.code, data.id, data.time);
-            processIncomingData(data); 
+            processIncomingData(data, 'WebSocket'); 
         } catch (e) {
             console.error('WebSocketデータの解析エラー:', e, event.data);
         }
@@ -346,7 +364,6 @@ async function connectRealtimeAPI() {
         if (wsConnectionTimeoutId) clearTimeout(wsConnectionTimeoutId);
         if (typeof wsWatchdogTimer !== 'undefined' && wsWatchdogTimer) clearInterval(wsWatchdogTimer);
 
-        // 以下のタイマー停止処理は、通常バックアップへの移行のために必要なので残す
         if (pollingIntervalId) { clearInterval(pollingIntervalId); pollingIntervalId = null; }
         if (burstPollingIntervalId) { clearInterval(burstPollingIntervalId); burstPollingIntervalId = null; }
         if (burstTimeoutId) { clearTimeout(burstTimeoutId); burstTimeoutId = null; }
