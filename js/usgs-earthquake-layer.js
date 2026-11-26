@@ -1,11 +1,17 @@
 /**
  * USGS GeoJSON API 過去30日間の世界の大きな地震 (M5.0以上)
- * Leaflet レイヤー管理・表示切り替え対応版
  */
 
 let usgsEarthquakeLayer = null; 
 let usgsSwitchState = true;     
 let usgsMapRef = null;          
+
+// マグニチュードに応じて滑らかに円の半径（メートル単位）を計算
+// M5.0 = 25km / M6.0 = 55km / M7.0 = 120km / M8.0 = 265km
+function calcUsgsRadiusMeters(mag) {
+    const baseMag = Math.max(5.0, mag);
+    return Math.round(25000 * Math.pow(2.2, baseMag - 5.0));
+}
 
 async function addUsgsEarthquakeLayer(map) {
     usgsMapRef = map;
@@ -30,19 +36,14 @@ async function addUsgsEarthquakeLayer(map) {
                 const shiftedLatLng = L.latLng(latlng.lat, lng);
 
                 const mag = feature.properties.mag;
-                let radius = 6;
-                if (mag >= 8.0) radius = 24;
-                else if (mag >= 7.0) radius = 16;
-                else if (mag >= 6.0) radius = 10;
-                else if (mag >= 5.0) radius = 6;
 
-                return L.circleMarker(shiftedLatLng, {
-                    radius: radius,
-                    fillColor: "#9c88ff", 
-                    color: "rgba(156, 136, 255, 0.6)",
+                return L.circle(shiftedLatLng, {
+                    radius: calcUsgsRadiusMeters(mag),
+                    fillColor: "#ff4757",
+                    color: "rgba(255, 71, 87, 0.6)",
                     weight: 1,
                     opacity: 1,
-                    fillOpacity: 0.4
+                    fillOpacity: 0.35
                 });
             },
             onEachFeature: function (feature, layer) {
@@ -52,7 +53,7 @@ async function addUsgsEarthquakeLayer(map) {
 
                 layer.bindPopup(`
                     <div style="font-size: 12px; color: #333; min-width: 120px;">
-                        <strong style="color: #9c88ff; font-size: 14px;">M${props.mag.toFixed(1)}</strong><br>
+                        <strong style="color: #ff4757; font-size: 14px;">M${props.mag.toFixed(1)}</strong><br>
                         深さ: ${depth.toFixed(1)} km<br>
                         ${time}<br>
                         <span style="font-size: 10px; color: #666;">${props.place}</span>
