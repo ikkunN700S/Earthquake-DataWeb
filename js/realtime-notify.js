@@ -512,37 +512,156 @@ document.addEventListener('DOMContentLoaded', () => {
     checkSpecialAdvisoriesOnLoad();
 });
 
+// CSV URLを設定
+const ADVISORY_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSn6ZKPAr4mlAX68W1UVmp8wchoAn2qz2yUhCuIop_oI015bBHQPRL9iqZvUB6fAfQbKwWQ5X0QVKYZ/pub?gid=2032210933&single=true&output=csv';
+// 「発表中」の情報を有効とみなす期間（7日間）
+const ADVISORY_VALID_MS = 7 * 24 * 60 * 60 * 1000;
+
+// セル内改行・カンマ・ダブルクォートに対応したCSVパーサー
+function parseAdvisoryCsv(text) {
+    const cleanText = text.replace(/^\uFEFF/, ''); // BOM除去
+    const rows = [];
+    let row = [];
+    let field = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < cleanText.length; i++) {
+        const char = cleanText[i];
+        const nextChar = cleanText[i + 1];
+
+        if (inQuotes) {
+            if (char === '"' && nextChar === '"') {
+                field += '"';
+                i++;
+            } else if (char === '"') {
+                inQuotes = false;
+            } else {
+                field += char;
+            }
+        } else {
+            if (char === '"') {
+                inQuotes = true;
+            } else if (char === ',') {
+                row.push(field);
+                field = '';
+            } else if (char === '\r' && nextChar === '\n') {
+                row.push(field);
+                rows.push(row);
+                row = [];
+                field = '';
+                i++;
+            } else if (char === '\n' || char === '\r') {
+                row.push(field);
+                rows.push(row);
+                row = [];
+                field = '';
+            } else {
+                field += char;
+            }
+        }
+    }
+
+    if (field.length > 0 || row.length > 0) {
+        row.push(field);
+        rows.push(row);
+    }
+
+    return rows.filter(r => r.some(cell => cell.trim() !== ''));
+}
+
+// ISO形式・スプレッドシート変換後形式の両方を安全にDate化する補助関数
+function parseAdvisoryDate(timeStr) {
+    if (!timeStr) return null;
+    const trimmed = timeStr.trim();
+    // すでにタイムゾーン情報を含むISO形式ならそのまま変換
+    let date = new Date(trimmed);
+    if (!isNaN(date.getTime())) return date;
+
+    // "2026/11/27 18:00:00" などの形式をJSTとして解釈
+    const normalized = trimmed.replace(/\//g, '-').replace(' ', 'T') + '+09:00';
+    date = new Date(normalized);
+    return isNaN(date.getTime()) ? null : date;
+}
+
+// HTMLエスケープ用（本文中の記号崩れ防止）
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 async function checkSpecialAdvisoriesOnLoad() {
+    if (!ADVISORY_CSV_URL || ADVISORY_CSV_URL.includes('ここに公開した')) return;
+
     try {
-        const res = await fetch(`advisory.json?_=${Date.now()}`);
+        const separator = ADVISORY_CSV_URL.includes('?') ? '&' : '?';
+        const res = await fetch(`${ADVISORY_CSV_URL}${separator}_=${Date.now()}`);
         if (!res.ok) return;
 
-        const rawData = await res.json();
-        
-        // 取得したデータが単一のオブジェクトだった場合も配列に変換する安全対策
-        const dataList = Array.isArray(rawData) ? rawData : [rawData];
-        
-        // 配列をループして、activeな臨時情報があればすべて表示する
-        dataList.forEach(data => {
-            if (data && data.active) {
-                const formattedContent = data.content.replace(/\r?\n/g, '<br>');
-                const formattedTime = data.time.substring(0, 16).replace('T', ' ');
+        const csvText = await res.text();
+        const rows = parseAdvisoryCsv(csvText);
+        if (rows.length === 0) return;
 
-                const contentHtml = `
-                    <strong style="color: #ff4757; font-size: 15px;">⚠️ 地震に関する重大な情報が発表されています</strong><br>
-                    <span style="font-size: 14px; font-weight: bold; margin-top: 5px; display: block;">${data.title}</span>
-                    
-                    <div style="font-size: 12px; color: #f1f2f6; margin-top: 6px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 4px; line-height: 1.5; max-height: 150px; overflow-y: auto; border: 1px solid rgba(255, 71, 87, 0.3);">
-                        ${formattedContent}
-                    </div>
-                    
-                    <span style="font-size: 11px; color: #ced6e0; display: block; margin-top: 8px;">
-                        発表: 気象庁 (${formattedTime})
-                    </span>
-                `;
-                
-                showRealtimePopup('🚨 地震に関する臨時情報', contentHtml, 'nankai-alert', 0);
+        // 種別ID（nankai / hokkaido）ごとに「最も新しい1件」だけを抽出
+        const latestById = new Map();
+
+        for (const cols of rows) {
+            // 列構成: [0]発表日時, [1]種別ID, [2]情報種別, [3]状態, [4]タイトル, [5]本文, [6]詳細XML
+            if (cols.length < 6) continue;
+
+            const timeStr = cols[0].trim();
+            const id = cols[1].trim();
+            const status = cols[3].trim();
+            const title = cols[4].trim();
+            const content = cols[5].trim();
+
+            if (!id || !timeStr) continue;
+
+            const dateObj = parseAdvisoryDate(timeStr);
+            const timestamp = dateObj ? dateObj.getTime() : 0;
+
+            const existing = latestById.get(id);
+            if (!existing || timestamp > existing.timestamp) {
+                latestById.set(id, { timeStr, dateObj, timestamp, id, status, title, content });
             }
+        }
+
+        const nowMs = Date.now();
+
+        // 各種別の最新情報が「発表中」かつ有効期間内であればポップアップを表示
+        latestById.forEach(data => {
+            if (data.status !== '発表中') return;
+            if (data.timestamp > 0 && nowMs - data.timestamp > ADVISORY_VALID_MS) return;
+
+            const formattedContent = escapeHtml(data.content).replace(/\r?\n/g, '<br>');
+            const formattedTime = data.dateObj
+                ? data.dateObj.toLocaleString('ja-JP', {
+                    timeZone: 'Asia/Tokyo',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })
+                : data.timeStr.substring(0, 16).replace('T', ' ');
+
+            const contentHtml = `
+                <strong style="color: #ff4757; font-size: 15px;">⚠️ 地震に関する重大な情報が発表されています</strong><br>
+                <span style="font-size: 14px; font-weight: bold; margin-top: 5px; display: block;">${escapeHtml(data.title)}</span>
+                
+                <div style="font-size: 12px; color: #f1f2f6; margin-top: 6px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 4px; line-height: 1.5; max-height: 150px; overflow-y: auto; border: 1px solid rgba(255, 71, 87, 0.3);">
+                    ${formattedContent}
+                </div>
+                
+                <span style="font-size: 11px; color: #ced6e0; display: block; margin-top: 8px;">
+                    発表: 気象庁 (${formattedTime})
+                </span>
+            `;
+
+            showRealtimePopup('地震に関する臨時情報', contentHtml, 'nankai-alert', 0);
         });
     } catch (error) {
         console.warn("臨時情報の確認に失敗しました", error);
